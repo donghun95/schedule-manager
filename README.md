@@ -88,4 +88,51 @@ API 명세서
 | PATCH | /api//confirm-requests/{id}/status | 컨펌 요청 승인/반려 처리  | {status, feedback?}※ status: APPROVED | REJECTED  | 200 OK {id, scheduleId, status, feedback, updatedAt} | O(담당자) |
 | GET | /api/confrim-requests | 결재 보관함 (내가 보낸/받은 요청) | ?type=RECEIVE|SEND&status=&size=&cursorId=  | 200 OK CursorResponse<ConfirmRequestResponse>  | O |
 
+ 인증 방식 ADR 작성
+
+# 001. 인증 방식으로  Redis Session을 선택한 이유
+
+## Context
+- 운영 관리형 서비스라 사용자 차단, 강제 로그아웃, 권한 변경 즉시 반영이 중요한다.
+- JWT도 고려했시잠 access token은 만료 전까지 기본적으로 유효하다.
+
+## Decision
+- Redus Session 기반 인증을 사용한다.
+  
+## Consequences
+- 서버가 로그인 상태를 통제할 수 있다.
+- 세션 저장소인 Redis가 필요하다.
+- 마이크로서비스나 외부 API 구조에서는 JWT가 더 적합할 수 있다.
+
+
+성능/테스트/운영 검증 계획 작성  
+
+성능
+- EXPLAIN으로 일정 목록 쿼리 인덱스 확인
+- N+1 발생 여부 확인
+- 캐시 적용 전/후 응답 시간 비교
+- DB 스키마 변경은 Flyway migration으로 관리 예정
+테스트
+- 상태 전이 성공/실패 테스트
+- 권한 없는 수정 실패 테스트
+- Repository 쿼리 테스트
+운영
+
+- ErrorResponse에 traceId 포함 예정
+- Actuator health check
+- GitHub Actions로 테스트 자동화 예정
+
+패키지 구조 초안
+
+auth/
+역할 : 회원가입, 로그인, 로그아웃 및 Session 검증을 담당합니다.
+user/
+역할 : 사용자 정보 조회 및 상태 관리를 담당합니다.
+schedule/
+역할 : 스케줄 및 협업의 도메인입니다.
+common/
+역할 : 공통 유틸 및 예외 처리합니다.
+config/
+역할 : 애플리케이션 설정입니다.
+
 
