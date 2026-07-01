@@ -65,8 +65,27 @@ schedule_status_history — 상태 변경 이력.
 confirm_requests  — 협업자가 업무 완료 후 담당자에게 승인을 요청하고 피드백을 받는 핵심 워크플로우 테이블입니다.   
 status를 통해 컨펌 진행 상황을 관리하며, feedback 컬럼을 두어 반려 사유나 수정 요청 사항을 텍스트로 보존합니다.   
 스케줄 자체의 상태와 분리되어 있어, 
-한 업무 내에서 발생한 수정 및 재요청 이력을 추적할 수 있습니다.  
+한 업무 내에서 발생한 수정 및 재요청 이력을 추적할 수 있습니다.    
 
+API 명세서
 
+| 메서드 | URL | 설명 | 요청 | 응답 | 인증 | 
+| :--- | :--- |:--- |:--- |:--- |:--- |
+| POST | /api/auth/signup | 회원가입 | {email,password,nickname} | 201 + UserResponse | X |
+| POST | /api/auth/login | 로그인 | {email,password} | 200 + UserResponse | X |
+| POST | /api/auth/logout | 로그아웃 | - | 204 | O |
+| GET | /api/users/me | 내 정보 조회 | - | 200 + UserResponse | O | 
+| POST | /api/schedules | 스케줄 등록 | {title,description,scheduledAt} | 201 + Location | O | 
+| GET | /api/schedules | 내 스케줄 목록 | ?status=&fromDate=&toDate=&cursorId=&size= | 200 + CursorResponse<ScheduleResponse> | O | 
+| GET | /api/schedules/{id} | 스케줄 단건 조회 | - | 200 + ScheduleDetailResponse | O |
+| PATCH | /api/schedules/{id} | 스케줄 부분 수정 | {title?,description?,scheduledAt?,version} | 200 + ScheduleResponse | O(작성자) | 
+| PATCH | /api/schedules/{id}/status | 상태 변경 | {toStatus,version} | 200 + ScheduleResponse | O(작성자/참여자) | 
+| DELETE | /api/schedules/{id} | 스케줄 삭제 | - | 204 | O(작성자) | 
+| POST | /api/schedules/{id}/participants | 참여자 추가 | {userId} | 201 | O(작성자) | 
+| DELETE | /api/schedules/{id}/participants/{userId} | 참여자 제거 | - | 204 | O(작성자) | 
+| GET | /api/schedules/upcoming | 다가오는 일정 캐시 조회 | ?size=10 | 200 + List<ScheduleSummary> | O |
+| POST | /api/confrim-requests | 컴펌(결재) 요청 등록 | {scheduleId, approverId} | 201 Created {id, scheduleId, requesterId, approverId, status: 'PENDING', createdAt} | O(협업자) |
+| PATCH | /api//confirm-requests/{id}/status | 컨펌 요청 승인/반려 처리  | {status, feedback?}※ status: APPROVED | REJECTED  | 200 OK {id, scheduleId, status, feedback, updatedAt} | O(담당자) |
+| GET | /api/confrim-requests | 결재 보관함 (내가 보낸/받은 요청) | ?type=RECEIVE|SEND&status=&size=&cursorId=  | 200 OK CursorResponse<ConfirmRequestResponse>  | O |
 
 
