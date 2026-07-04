@@ -11,7 +11,6 @@
 
 | 기술 | 어디에 적용할지 |
 | :--- | :--- |
-| CustomAppbar | 직접 만들어 본 커스텀 앱바입니다. |
 | JPA | 엔티티 연관관계 매핑 및 Fetch Join을 통한 성능 최적화에 적용 |
 | Redis | Session 저장소 구축 및 다가오는 일정 데이터 캐싱에 적용 |
 | Spring Security | 로그인 인증 및 접근 권한 체크 기능에 적용 |
@@ -84,20 +83,20 @@ API 명세서
 | POST | /api/schedules/{id}/participants | 참여자 추가 | {userId} | 201 | O(작성자) | 
 | DELETE | /api/schedules/{id}/participants/{userId} | 참여자 제거 | - | 204 | O(작성자) | 
 | GET | /api/schedules/upcoming | 다가오는 일정 캐시 조회 | ?size=10 | 200 + List<ScheduleSummary> | O |
-| POST | /api/confrim-requests | 컴펌(결재) 요청 등록 | {scheduleId, approverId} | 201 Created {id, scheduleId, requesterId, approverId, status: 'PENDING', createdAt} | O(협업자) |
-| PATCH | /api//confirm-requests/{id}/status | 컨펌 요청 승인/반려 처리  | {status, feedback?}※ status: APPROVED | REJECTED  | 200 OK {id, scheduleId, status, feedback, updatedAt} | O(담당자) |
-| GET | /api/confrim-requests | 결재 보관함 (내가 보낸/받은 요청) | ?type=RECEIVE|SEND&status=&size=&cursorId=  | 200 OK CursorResponse<ConfirmRequestResponse>  | O |
+| POST | /api/confirm-requests | 컴펌(결재) 요청 등록 | {scheduleId, approverId} | 201 Created {id, scheduleId, requesterId, approverId, status: 'PENDING', createdAt} | O(협업자) |
+| PATCH | /api/confirm-requests/{id}/status | 컨펌 요청 승인/반려 처리  | {status, feedback?}※ status: APPROVED | REJECTED  | 200 OK {id, scheduleId, status, feedback, updatedAt} | O(담당자) |
+| GET | /api/confirm-requests | 결재 보관함 (내가 보낸/받은 요청) | ?type=RECEIVE|SEND&status=&size=&cursorId=  | 200 OK CursorResponse<ConfirmRequestResponse>  | O |
 
  인증 방식 ADR 작성
 
 # 001. 인증 방식으로  Redis Session을 선택한 이유
 
 ## Context
-- 운영 관리형 서비스라 사용자 차단, 강제 로그아웃, 권한 변경 즉시 반영이 중요한다.
-- JWT도 고려했시잠 access token은 만료 전까지 기본적으로 유효하다.
+- 운영 관리형 서비스라 사용자 차단, 강제 로그아웃, 권한 변경 즉시 반영이 중요하다.
+- JWT도 고려했지만 access token은 만료 전까지 기본적으로 유효하다.
 
 ## Decision
-- Redus Session 기반 인증을 사용한다.
+- Redis Session 기반 인증을 사용한다.
   
 ## Consequences
 - 서버가 로그인 상태를 통제할 수 있다.
