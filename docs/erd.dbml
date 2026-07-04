@@ -1,0 +1,67 @@
+Table users {
+id bigint [pk, increment]
+email varchar(100) [not null, unique]
+password varchar(255) [not null, note: 'BCrypt hash']
+nickname varchar(50) [not null]
+role varchar(20) [not null, note: 'USER | ADMIN']
+status varchar(20) [not null, note: 'ACTIVE | BLOCKED']
+created_at datetime [not null]
+updated_at datetime [not null]
+indexes {
+email [unique, name: 'uk_users_email']
+status [name: 'idx_users_status']
+}
+}
+Table schedules {
+id bigint [pk, increment]
+owner_id bigint [not null, ref: > users.id]
+title varchar(200) [not null]
+description text
+status varchar(20) [not null, note: 'PLANNED | IN_PROGRESS | DONE | CANCELED']
+scheduled_at datetime [not null]
+created_at datetime [not null]
+updated_at datetime [not null]
+version bigint [not null, default: 0, note: 'JPA @Version']
+indexes {
+(owner_id, scheduled_at) [name: 'idx_schedules_owner_scheduled']
+(status, scheduled_at) [name: 'idx_schedules_status_scheduled']
+}
+}
+Table schedule_participants {
+schedule_id bigint [not null, ref: > schedules.id]
+user_id bigint [not null, ref: > users.id]
+joined_at datetime [not null]
+participant_role vacher(20) [not null]
+indexes {
+(schedule_id, user_id) [pk]
+user_id [name: 'idx_participants_user']
+}
+}
+
+Table confirm_requests {
+  id bigint [pk, increment]
+  schedule_id bigint [not null, ref: > schedules.id]
+  requester_id bigint [not null, ref: > users.id, note: '컨펌을 요청한 협업자']
+  approver_id bigint [not null, ref: > users.id, note: '최종 컨펌을 해줄 담당자']
+  status varchar(20) [not null, note: 'PENDING(대기) | APPROVED(승인) | REJECTED(반려)']
+  feedback text [note: '반려 사유 혹은 승인 코멘트']
+  created_at datetime [not null]
+  updated_at datetime [not null]
+
+  indexes {
+    schedule_id [name: 'idx_confirm_schedule']
+    status [name: 'idx_confirm_status']
+    (requester_id, approver_id) [name: 'idx_confirm_flow']
+  }
+}
+Table schedule_status_history {
+id bigint [pk, increment]
+schedule_id bigint [not null, ref: > schedules.id]
+from_status varchar(20)
+to_status varchar(20) [not null]
+changed_by bigint [not null, ref: > users.id]
+changed_at datetime [not null]
+indexes {
+(schedule_id, changed_at) [name: 'idx_history_schedule_changed']
+}
+}
