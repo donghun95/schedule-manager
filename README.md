@@ -84,8 +84,8 @@ API 명세서
 | DELETE | /api/schedules/{id}/participants/{userId} | 참여자 제거 | - | 204 | O(작성자) | 
 | GET | /api/schedules/upcoming | 다가오는 일정 캐시 조회 | ?size=10 | 200 + List<ScheduleSummary> | O |
 | POST | /api/confirm-requests | 컴펌(결재) 요청 등록 | {scheduleId, approverId} | 201 Created {id, scheduleId, requesterId, approverId, status: 'PENDING', createdAt} | O(협업자) |
-| PATCH | /api/confirm-requests/{id}/status | 컨펌 요청 승인/반려 처리  | {status, feedback?}※ status: APPROVED | REJECTED  | 200 OK {id, scheduleId, status, feedback, updatedAt} | O(담당자) |
-| GET | /api/confirm-requests | 결재 보관함 (내가 보낸/받은 요청) | ?type=RECEIVE|SEND&status=&size=&cursorId=  | 200 OK CursorResponse<ConfirmRequestResponse>  | O |
+| PATCH | /api/confirm-requests/{id}/status | 컨펌 요청 승인/반려 처리  | {status, feedback?}※ status: APPROVED/REJECTED  | 200 OK {id, scheduleId, status, feedback, updatedAt} | O(담당자) |
+| GET | /api/confirm-requests | 결재 보관함 (내가 보낸/받은 요청) | ?type=RECEIVE 또는 SEND&status=&size=&cursorId=  | 200 OK CursorResponse<ConfirmRequestResponse>  | O |
 
  인증 방식 ADR 작성
 
