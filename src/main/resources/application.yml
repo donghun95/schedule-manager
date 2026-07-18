@@ -40,6 +40,8 @@ server:
         same-site: lax
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId}] %-5level %logger - %msg%n"
   level:
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
