@@ -3,6 +3,7 @@ package com.dsa.schedule_manager.common.error;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -23,10 +24,20 @@ public class GlobalExceptionHandler {
                 .status(errorCode.getStatus())
                 .body(ErrorResponse.from(errorCode));
     }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(DataIntegrityViolationException e) {
         ErrorCode errorCode = ErrorCode.EMAIL_ALREADY_USED;
 
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.from(errorCode));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse>
+    handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        ErrorCode errorCode = ErrorCode.SCHEDULE_CONFLICT;
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(ErrorResponse.from(errorCode));
