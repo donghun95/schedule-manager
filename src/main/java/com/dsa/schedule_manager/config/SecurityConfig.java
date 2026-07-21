@@ -36,6 +36,8 @@ public class SecurityConfig {
                 .httpBasic(basic -> basic.disable()) // Basic Auth 안 씀
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                        // 세션 고정 공격 방어 설정
+                        .sessionFixation(sessionFixation -> sessionFixation.changeSessionId())
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
