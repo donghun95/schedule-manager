@@ -13,7 +13,6 @@ spring:
       ddl-auto: update
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MariaDBDialect
         format_sql: true
     show-sql: true
     open-in-view: false
@@ -29,6 +28,10 @@ spring:
       redis:
         namespace: schedule-manager:session
 
+app:
+  security:
+    csrf-enabled: ${CSRF_ENABLED:true}
+
 server:
   port: 18080
   servlet:
@@ -36,7 +39,7 @@ server:
       cookie:
         name: SCHEDULEID
         http-only: true
-        secure: false # 로컬 개발에서는 false, 배포 환경에서는 true
+        secure: ${COOKIE_SECURE:true}
         same-site: lax
 
 logging:
