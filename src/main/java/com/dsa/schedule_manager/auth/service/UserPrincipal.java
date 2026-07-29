@@ -4,7 +4,7 @@ import com.dsa.schedule_manager.user.domain.User;
 import com.dsa.schedule_manager.user.domain.UserRole;
 import com.dsa.schedule_manager.user.domain.UserStatus;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,17 +14,31 @@ import java.util.Collection;
 import java.util.List;
 
 @Getter
-@RequiredArgsConstructor
-public class UserPrincipal implements UserDetails, Serializable {
+public class UserPrincipal implements UserDetails, CredentialsContainer, Serializable {
 
     private static final long serialVersionUID = 1L;
 
     private final Long id;
     private final String email;
-    private final String password;
+    private String password;
     private final String nickname;
     private final UserRole role;
     private final UserStatus status;
+
+    public UserPrincipal(
+            Long id,
+            String email,
+            String password,
+            String nickname,
+            UserRole role,
+            UserStatus status) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.nickname = nickname;
+        this.role = role;
+        this.status = status;
+    }
 
     public static UserPrincipal from(User user) {
         return new UserPrincipal(
@@ -70,5 +84,10 @@ public class UserPrincipal implements UserDetails, Serializable {
     @Override
     public boolean isEnabled() {
         return status == UserStatus.ACTIVE;
+    }
+
+    @Override
+    public void eraseCredentials() {
+        this.password = null;
     }
 }
