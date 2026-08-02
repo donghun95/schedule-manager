@@ -78,7 +78,7 @@ API 명세서
 | GET | /api/schedules | 내 스케줄 목록 | ?status=&fromDate=&toDate=&cursorId=&size= | 200 + CursorResponse<ScheduleResponse> | O | 
 | GET | /api/schedules/{id} | 스케줄 단건 조회 | - | 200 + ScheduleDetailResponse | O |
 | PATCH | /api/schedules/{id} | 스케줄 부분 수정 | {title?,description?,scheduledAt?,version} | 200 + ScheduleResponse | O(작성자) | 
-| PATCH | /api/schedules/{id}/status | 상태 변경 | {toStatus,version} | 200 + ScheduleResponse | O(작성자/참여자) | 
+| PATCH | /api/schedules/{id}/status | 상태 변경 | {toStatus,version} | 200 + ScheduleResponse | O(작성자) | 
 | DELETE | /api/schedules/{id} | 스케줄 삭제 | - | 204 | O(작성자) | 
 | POST | /api/schedules/{id}/participants | 참여자 추가 | {userId} | 201 | O(작성자) | 
 | DELETE | /api/schedules/{id}/participants/{userId} | 참여자 제거 | - | 204 | O(작성자) | 
