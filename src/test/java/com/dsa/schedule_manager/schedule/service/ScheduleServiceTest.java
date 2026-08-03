@@ -31,6 +31,8 @@ class ScheduleServiceTest {
 
     @Mock
     ScheduleRepository scheduleRepository;
+
+    @Mock
     ScheduleStatusHistoryRepository scheduleStatusHistoryRepository;
 
     @InjectMocks
@@ -110,7 +112,7 @@ class ScheduleServiceTest {
         ScheduleResponse response = sut.changeStatus(ownerId, scheduleId, request);
 
         // then
-        assertThat(response.status()).isEqualTo(ScheduleStatus.IN_PROGRESS);
+        assertThat(response.status()).isEqualTo(ScheduleStatus.IN_PROGRESS.name());
     }
 
     // 5. 같은 상태 또는 허용되지 않은 전이는 409
