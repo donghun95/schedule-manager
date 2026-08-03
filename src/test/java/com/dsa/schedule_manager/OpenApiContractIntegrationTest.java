@@ -19,6 +19,7 @@ class OpenApiContractIntegrationTest {
     @Autowired
     MockMvc mockMvc;
 
+
     @Test
     void openApiDocumentsActualSuccessStatusCodes() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
