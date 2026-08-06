@@ -224,5 +224,32 @@ Hibernate Statistics 기준 4 queries에서 1 query로 줄었다.
 
 현재 조회는 to-one User를 함께 가져오고 페이징하지 않아
 EntityGraph가 간결했다. 컬렉션 Fetch Join과 페이징은 무조건 결합하지 않는다.
+  
+
+# 프로젝트 소개 
+일정을 생생하고 여러 참여자를 초대하여 승인과 상태 변경을 관리하는 협업 일정 관리 앱입니다.
+Spring Boot 와 JPA를 기반으로 인증,권한관리,참여자 승인, 일정 이력 관리 기능을 구현했으며 REST API와 테스트 코드를 통해 안정성을 검증했습니다.
+### 기술 선택 이유
+Spring Boot + JPA
+반복적인 CRUD보다 비즈니스 로직 구현에 집중하기 위해 선택
+객체 중심으로 도메인을 설계하고 연관관계를 자연스럽게 표현 가능
+### 트러블 슈팅
+트러블슈팅(N+1)
+## 트러블슈팅: 참여자 목록 N+1
+### 문제
+참여자 3명의 nickname을 응답에 넣을 때 SQL이 4번 실행됐다.
+### 원인
+ScheduleParticipant.user가 LAZY이고 DTO 변환 중 User에 접근했다.
+### 해결
+해당 조회에 @EntityGraph(attributePaths = "user")를 적용했다.
+### 결과
+Hibernate Statistics 기준 4 queries에서 1 query로 줄었다.
+### 선택 이유와 제한
+
+현재 조회는 to-one User를 함께 가져오고 페이징하지 않아
+EntityGraph가 간결했다. 컬렉션 Fetch Join과 페이징은 무조건 결합하지 않는다.
+
+# 이력서 한 줄 소개
+JWT 기반 인증과 참여자 승인, 일정 이력 관리 기능을 구현한 협업 일정 관리 REST API 프로젝트
 
 
