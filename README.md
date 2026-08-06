@@ -195,3 +195,34 @@ config/
    하지만 미세한 시간 차로 동시에 들어오는 요청의 경우, 두 요청 모두 아직 DB에 저장되기 전이므로 exists 검증을 동시에 통과하는 허점이 있습니다.
 2. 2단계 방어에서는 Database 레이어 검증을 합니다.    
    DB 엔진 수준에서 동일한 이메일 저장을 물리적으로 차단하기 때문에, 동시 요청이 들어오더라도 데이터가 중복 저장 되는 것을 막아줍니다.  
+
+## 트러블슈팅: 일정 목록의 안정적인 Cursor 페이징
+### 문제
+scheduledAt만 Cursor로 사용하면 같은 시각의 일정이 여러 건일 때
+다음 페이지에서 누락되거나 중복될 수 있었다.
+### 원인
+scheduledAt 하나만으로는 전체 정렬 순서가 결정되지 않았다.
+### 해결
+scheduledAt DESC, id DESC로 정렬하고,
+다음 페이지 조건도 scheduledAt + id 복합 조건으로 맞췄다.
+size + 1건을 조회해 별도 COUNT 없이 hasNext를 판단했다.
+### 검증
+같은 scheduledAt의 일정과 작성·참여 일정을 섞은 통합 테스트에서
+페이지 사이의 누락과 중복이 없음을 확인했다.
+
+
+## 트러블슈팅: 참여자 목록 N+1
+### 문제
+참여자 3명의 nickname을 응답에 넣을 때 SQL이 4번 실행됐다.
+### 원인
+ScheduleParticipant.user가 LAZY이고 DTO 변환 중 User에 접근했다.
+### 해결
+해당 조회에 @EntityGraph(attributePaths = "user")를 적용했다.
+### 결과
+Hibernate Statistics 기준 4 queries에서 1 query로 줄었다.
+### 선택 이유와 제한
+
+현재 조회는 to-one User를 함께 가져오고 페이징하지 않아
+EntityGraph가 간결했다. 컬렉션 Fetch Join과 페이징은 무조건 결합하지 않는다.
+
+
