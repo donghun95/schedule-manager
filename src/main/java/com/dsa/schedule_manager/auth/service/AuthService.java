@@ -2,14 +2,13 @@ package com.dsa.schedule_manager.auth.service;
 
 import com.dsa.schedule_manager.auth.dto.LoginRequest;
 import com.dsa.schedule_manager.auth.dto.SignupRequest;
+import com.dsa.schedule_manager.auth.dto.UserResponse;
 import com.dsa.schedule_manager.common.error.BusinessException;
 import com.dsa.schedule_manager.common.error.ErrorCode;
 import com.dsa.schedule_manager.user.domain.User;
-import com.dsa.schedule_manager.auth.dto.UserResponse;
 import com.dsa.schedule_manager.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,6 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +30,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
+    private final SessionAuthenticationStrategy sessionAuthenticationStrategy;
 
     @Transactional
     public UserResponse signup(SignupRequest request) {
@@ -56,14 +57,15 @@ public class AuthService {
 
         Authentication authenticated = authenticationManager.authenticate(token);
 
+        sessionAuthenticationStrategy.onAuthentication(
+                authenticated,
+                httpRequest,
+                httpResponse
+        );
+
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authenticated);
         SecurityContextHolder.setContext(context);
-
-        HttpSession session = httpRequest.getSession(false);
-        if(session != null) {
-            httpRequest.changeSessionId();
-        }
 
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
 

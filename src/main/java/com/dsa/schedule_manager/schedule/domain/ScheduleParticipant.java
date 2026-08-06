@@ -12,13 +12,10 @@ import lombok.NoArgsConstructor;
         name = "schedule_participants",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_schedule_participant",
-                columnNames = {"schedule_id", "user_id"}
-        ),
+                columnNames = {"schedule_id", "user_id"}),
         indexes = @Index(
                 name = "idx_schedule_participants_user_schedule",
-                columnList = "user_id, schedule_id"
-        )
-)
+                columnList = "user_id, schedule_id"))
 @Access(AccessType.FIELD)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

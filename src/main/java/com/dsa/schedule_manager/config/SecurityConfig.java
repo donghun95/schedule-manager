@@ -3,7 +3,6 @@ package com.dsa.schedule_manager.config;
 import com.dsa.schedule_manager.common.error.ErrorCode;
 import com.dsa.schedule_manager.common.error.ErrorResponse;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +24,8 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import tools.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
@@ -59,9 +60,9 @@ public class SecurityConfig {
                                 "/api/auth/signup",
                                 "/api/auth/login",
                                 "/error",
+                                "/swagger-ui.html",
                                 "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/actuator/health"
+                                "/v3/api-docs/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

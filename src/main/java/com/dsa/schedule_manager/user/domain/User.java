@@ -1,8 +1,6 @@
 package com.dsa.schedule_manager.user.domain;
 
 import com.dsa.schedule_manager.common.persistence.BaseEntity;
-import com.dsa.schedule_manager.user.domain.UserRole;
-import com.dsa.schedule_manager.user.domain.UserStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

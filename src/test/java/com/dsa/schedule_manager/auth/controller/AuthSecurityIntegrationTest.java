@@ -14,10 +14,8 @@ import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -34,16 +32,17 @@ class AuthSecurityIntegrationTest {
     UserRepository userRepository;
 
     @BeforeEach
-    void setUp() {userRepository.deleteAll();}
+    void setUp() {
+        userRepository.deleteAll();
+    }
 
     @Test
     void unauthenticatedJsonRequestReturns401WithoutCreatingSession() throws Exception {
         mockMvc.perform(get("/api/users/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(cookie().doesNotExist("SCHEDULEID"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("E_401_001"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.traceId").isNotEmpty());
-
+                .andExpect(jsonPath("$.code").value("E_401_001"))
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     @Test
@@ -52,12 +51,12 @@ class AuthSecurityIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{bad-json}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("E_400_001"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.traceId").isNotEmpty());
+                .andExpect(jsonPath("$.code").value("E_400_001"))
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     @Test
-    void invalidSignupRetrunsFieldErrorsWithoutRejectedPassword() throws Exception {
+    void invalidSignupReturnsFieldErrorsWithoutRejectedPassword() throws Exception {
         mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -68,10 +67,10 @@ class AuthSecurityIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("E_400_001"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.fieldErrors[0].field").value("password"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.fieldErrors[0].message").isNotEmpty())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.fieldErrors[0].rejectedValue").doesNotExist());
+                .andExpect(jsonPath("$.code").value("E_400_001"))
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("password"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").isNotEmpty())
+                .andExpect(jsonPath("$.fieldErrors[0].rejectedValue").doesNotExist());
     }
 
     @Test
@@ -112,7 +111,7 @@ class AuthSecurityIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isUnauthorized())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("E_401_001"));
+                .andExpect(jsonPath("$.code").value("E_401_001"));
     }
 
     @Test
@@ -131,7 +130,7 @@ class AuthSecurityIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isUnauthorized())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("E_401_001"));
+                .andExpect(jsonPath("$.code").value("E_401_001"));
     }
 
     @Test
@@ -139,7 +138,7 @@ class AuthSecurityIntegrationTest {
         mockMvc.perform(get("/api/auth/login"))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(header().string(HttpHeaders.ALLOW, org.hamcrest.Matchers.containsString("POST")))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("E_405_001"));
+                .andExpect(jsonPath("$.code").value("E_405_001"));
     }
 
     @Test
@@ -148,7 +147,7 @@ class AuthSecurityIntegrationTest {
                         .contentType(MediaType.TEXT_PLAIN)
                         .content("not-json"))
                 .andExpect(status().isUnsupportedMediaType())
-                .andExpect(MockMvcResultMatchers.jsonPath("$.code").value("E_415_001"));
+                .andExpect(jsonPath("$.code").value("E_415_001"));
     }
 
     private void signup() throws Exception {
@@ -164,4 +163,3 @@ class AuthSecurityIntegrationTest {
                 .andExpect(status().isCreated());
     }
 }
-

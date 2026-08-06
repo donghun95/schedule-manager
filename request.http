@@ -1,0 +1,128 @@
+@baseUrl = http://localhost:18080
+
+# 깨끗한 DB에서 위에서부터 실행하는 14주차 시나리오입니다.
+# id, version, joinedAt, Cursor 값은 DB 상태와 실행 시점에 따라 달라집니다.
+
+### 1. 작성자 가입
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "owner14@example.com",
+  "password": "password123",
+  "nickname": "작성자14"
+}
+
+> {%
+    client.global.set("ownerId", response.body.id);
+%}
+
+### 2. 참여자 가입
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "participant14@example.com",
+  "password": "password123",
+  "nickname": "참여자14"
+}
+
+> {%
+    client.global.set("participantId", response.body.id);
+%}
+
+### 3. 작성자 로그인
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner14@example.com",
+  "password": "password123"
+}
+
+### 4. 일정 A 생성
+POST {{baseUrl}}/api/schedules
+Content-Type: application/json
+
+{
+  "title": "일정 A",
+  "description": "첫 페이지 첫 번째 일정",
+  "scheduledAt": "2099-09-03T10:00:00"
+}
+
+### 5. 일정 B 생성 - C와 같은 시각
+POST {{baseUrl}}/api/schedules
+Content-Type: application/json
+
+{
+  "title": "일정 B",
+  "description": "동일 시각 보조 정렬 확인",
+  "scheduledAt": "2099-09-02T10:00:00"
+}
+
+### 6. 일정 C 생성 - B와 같은 시각
+POST {{baseUrl}}/api/schedules
+Content-Type: application/json
+
+{
+  "title": "일정 C",
+  "description": "참여자에게 공유할 일정",
+  "scheduledAt": "2099-09-02T10:00:00"
+}
+
+> {%
+    client.global.set("sharedScheduleId", response.body.id);
+%}
+
+### 7. 일정 D 생성
+POST {{baseUrl}}/api/schedules
+Content-Type: application/json
+
+{
+  "title": "일정 D",
+  "description": "두 번째 페이지 일정",
+  "scheduledAt": "2099-09-01T10:00:00"
+}
+
+### 8. 일정 C에 참여자 추가
+POST {{baseUrl}}/api/schedules/{{sharedScheduleId}}/participants
+Content-Type: application/json
+
+{
+  "userId": {{participantId}}
+}
+
+### 9. 작성자의 첫 페이지 - size + 1 조회로 hasNext 판단
+GET {{baseUrl}}/api/schedules?size=2
+
+> {%
+    client.global.set("nextCursorScheduledAt", response.body.nextCursorScheduledAt);
+    client.global.set("nextCursorId", response.body.nextCursorId);
+%}
+
+### 10. 작성자의 다음 페이지 - 응답 Cursor 두 값을 그대로 사용
+GET {{baseUrl}}/api/schedules?cursorScheduledAt={{nextCursorScheduledAt}}&cursorId={{nextCursorId}}&size=2
+
+### 11. 상태·기간 필터
+GET {{baseUrl}}/api/schedules?status=PLANNED&fromAt=2099-09-01T10:00:00&toAt=2099-09-03T10:00:00&size=10
+
+### 12. Cursor ID만 전달 - 400 E_400_003
+GET {{baseUrl}}/api/schedules?cursorId={{nextCursorId}}&size=2
+
+### 13. 잘못된 날짜 범위 - 400 E_400_004
+GET {{baseUrl}}/api/schedules?fromAt=2099-09-03T10:00:00&toAt=2099-09-01T10:00:00
+
+### 14. 참여자로 로그인
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "participant14@example.com",
+  "password": "password123"
+}
+
+### 15. 참여자의 접근 가능 일정 - 일정 C만 조회
+GET {{baseUrl}}/api/schedules?size=10
+
+### 16. 참여자 목록 - User를 @EntityGraph로 함께 조회
+GET {{baseUrl}}/api/schedules/{{sharedScheduleId}}/participants

@@ -1,7 +1,6 @@
 package com.dsa.schedule_manager.schedule.dto;
 
 import com.dsa.schedule_manager.schedule.domain.Schedule;
-
 import java.time.LocalDateTime;
 
 public record ScheduleResponse(
@@ -15,11 +14,17 @@ public record ScheduleResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static ScheduleResponse from(Schedule s) {
+    public static ScheduleResponse from(Schedule schedule) {
         return new ScheduleResponse(
-                s.getId(), s.getOwnerId(), s.getTitle(), s.getDescription(),
-                s.getStatus().name(), s.getScheduledAt(), s.getVersion(),
-                s.getCreatedAt(), s.getUpdatedAt()
+                schedule.getId(),
+                schedule.getOwnerId(),
+                schedule.getTitle(),
+                schedule.getDescription(),
+                schedule.getStatus().name(),
+                schedule.getScheduledAt(),
+                schedule.getVersion(),
+                schedule.getCreatedAt(),
+                schedule.getUpdatedAt()
         );
     }
 }

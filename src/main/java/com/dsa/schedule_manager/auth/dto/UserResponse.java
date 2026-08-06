@@ -2,7 +2,6 @@ package com.dsa.schedule_manager.auth.dto;
 
 import com.dsa.schedule_manager.auth.service.UserPrincipal;
 import com.dsa.schedule_manager.user.domain.User;
-import com.dsa.schedule_manager.user.repository.UserRepository;
 
 public record UserResponse(
         Long id,

@@ -1,6 +1,5 @@
 package com.dsa.schedule_manager.auth.controller;
 
-
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.security.csrf-enabled=true",
         "server.servlet.session.cookie.secure=false"
 })
-
 @AutoConfigureMockMvc
 class CsrfSecurityIntegrationTest {
 
@@ -63,4 +61,3 @@ class CsrfSecurityIntegrationTest {
                 .andExpect(status().isCreated());
     }
 }
-
