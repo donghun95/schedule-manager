@@ -52,7 +52,7 @@ public class ScheduleParticipant extends BaseEntity {
     public void accept() {
         if (this.status != ParticipantStatus.PENDING) {
             throw new BusinessException(
-                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSTITION
+                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
             );
         }
 
@@ -62,7 +62,7 @@ public class ScheduleParticipant extends BaseEntity {
     public void reject() {
         if (this.status != ParticipantStatus.PENDING) {
             throw  new BusinessException(
-                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSTITION
+                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
             );
         }
 
