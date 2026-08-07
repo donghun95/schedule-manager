@@ -107,4 +107,57 @@ public class ScheduleParticipantController {
         participantService.removeParticipant(principal.getId(), scheduleId, userId);
         return ResponseEntity.noContent().build();
     }
+    @Operation(summary = "일정 참여 초대 수락")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "초대 수락 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 필요",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "참여 초대 없음",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "현재 상태에서는 수락 불가",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/me/accept")
+    public ResponseEntity<Void> acceptInvitation(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long scheduleId) {
+
+        participantService.acceptInvitation(
+                principal.getId(),
+                scheduleId
+        );
+
+        return ResponseEntity.noContent().build();
+    }
+
+
+    @Operation(summary = "일정 참여 초대 거절")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "초대 거절 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 필요",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "참여 초대 없음",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "현재 상태에서는 거절 불가",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    // 거절
+    @PatchMapping("/me/reject")
+    public ResponseEntity<Void> rejectInvitation(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long scheduleId) {
+
+        participantService.rejectInvitation(
+                principal.getId(),
+                scheduleId
+        );
+
+        return ResponseEntity.noContent().build();
+    }
 }

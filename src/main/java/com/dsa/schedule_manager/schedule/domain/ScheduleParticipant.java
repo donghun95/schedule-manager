@@ -1,5 +1,7 @@
 package com.dsa.schedule_manager.schedule.domain;
 
+import com.dsa.schedule_manager.common.error.BusinessException;
+import com.dsa.schedule_manager.common.error.ErrorCode;
 import com.dsa.schedule_manager.common.persistence.BaseEntity;
 import com.dsa.schedule_manager.user.domain.User;
 import jakarta.persistence.*;
@@ -33,12 +35,37 @@ public class ScheduleParticipant extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private  ParticipantStatus status;
+
     private ScheduleParticipant(Schedule schedule, User user) {
         this.schedule = schedule;
         this.user = user;
+        this.status = ParticipantStatus.PENDING;
     }
 
     public static ScheduleParticipant of(Schedule schedule, User user) {
         return new ScheduleParticipant(schedule, user);
+    }
+
+    public void accept() {
+        if (this.status != ParticipantStatus.PENDING) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSTITION
+            );
+        }
+
+        this.status = ParticipantStatus.ACCEPTED;
+    }
+
+    public void reject() {
+        if (this.status != ParticipantStatus.PENDING) {
+            throw  new BusinessException(
+                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSTITION
+            );
+        }
+
+        this.status = ParticipantStatus.REJECTED;
     }
 }

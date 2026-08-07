@@ -126,3 +126,26 @@ GET {{baseUrl}}/api/schedules?size=10
 
 ### 16. 참여자 목록 - User를 @EntityGraph로 함께 조회
 GET {{baseUrl}}/api/schedules/{{sharedScheduleId}}/participants
+
+### 17. 초대 수락
+PATCH {{baseUrl}}/api/schedules/{{sharedScheduleId}}/participants/me/accept
+
+
+### 18. 거절 테스트 일정 생성
+
+POST {{baseUrl}}/api/schedules을
+Content-Type: application/json
+
+{
+  "title": "거절 테스트 일정",
+  "description": "REJECTED 상태 확인",
+  "scheduledAt": "2099-09-04T10:00:00"
+}
+
+> {%
+    client.global.set("rejectScheduleId", response.body.id);
+%}
+
+### 19.초대 거절
+PATCH {{baseUrl}}/api/schedules/{{rejectScheduleId}}/participants/me/reject
+

@@ -29,6 +29,11 @@ public enum ErrorCode {
             "요청이 데이터 제약 조건과 충돌합니다."),
     INVALID_STATUS_TRANSITION(
             "E_409_004", HttpStatus.CONFLICT, "현재 상태에서는 요청한 상태로 변경할 수 없습니다."),
+    INVALID_PARTICIPANT_STATUS_TRANSTITION(
+            "E_409_008",
+            HttpStatus.CONFLICT,
+            "현재 참여 상태에서는 요청을 처리할 수 없습니다."
+    ),
     SAME_STATUS_TRANSITION(
             "E_409_005", HttpStatus.CONFLICT, "이미 요청한 상태입니다."),
     PARTICIPANT_ALREADY_EXISTS(

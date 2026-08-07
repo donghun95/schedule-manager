@@ -24,6 +24,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
                     from ScheduleParticipant sp
                     where sp.schedule = s
                       and sp.user.id = :userId
+                      and sp.status =
+                          com.dsa.schedule_manager.schedule.domain.ParticipantStatus.ACCEPTED
                 )
             )
               and (:status is null or s.status = :status)

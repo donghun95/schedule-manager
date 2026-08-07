@@ -82,4 +82,38 @@ public class ScheduleParticipantService {
         }
         return schedule;
     }
+    // requestId - 누가 수락하는가? scheduleId - 어떤 일정의 초대를 수락하는가?
+    @Transactional
+    public void acceptInvitation(
+            Long requesterId,
+            Long scheduleId) {
+
+        ScheduleParticipant participant =
+                participantRepository.findByScheduleIdAndUserId(
+                                scheduleId,
+                                requesterId
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.PARTICIPANT_NOT_FOUND
+                                ));
+        participant.accept();
+    }
+
+    @Transactional
+    public void rejectInvitation(
+            Long requesterId,
+            Long scheduleId) {
+
+        ScheduleParticipant participant =
+                participantRepository.findByScheduleIdAndUserId(
+                                scheduleId,
+                                requesterId
+                        )
+                        .orElseThrow(() ->
+                                new BusinessException(
+                                        ErrorCode.PARTICIPANT_NOT_FOUND
+                                ));
+        participant.reject();
+    }
 }
