@@ -2,6 +2,8 @@ package com.dsa.schedule_manager.schedule.service;
 
 import com.dsa.schedule_manager.common.error.BusinessException;
 import com.dsa.schedule_manager.common.error.ErrorCode;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleAccessPolicy;
+import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.dto.ScheduleResponse;
 import com.dsa.schedule_manager.schedule.dto.ScheduleUpdateRequest;
@@ -31,28 +33,52 @@ class ScheduleServiceTest {
     @Mock
     ScheduleParticipantRepository participantRepository;
 
+    @Mock
+    ScheduleAccessPolicy scheduleAccessPolicy;
+
     @InjectMocks
     ScheduleService sut;
 
     @Test
     void update_작성자와_version이_맞으면_수정한다() {
         Schedule schedule = schedule(1L, 0L);
-        given(scheduleRepository.findById(10L)).willReturn(Optional.of(schedule));
-        ScheduleUpdateRequest request = new ScheduleUpdateRequest("변경", null, null, 0L);
 
-        ScheduleResponse response = sut.update(1L, 10L, request);
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        ScheduleUpdateRequest request =
+                new ScheduleUpdateRequest(
+                        "변경",
+                        null,
+                        null,
+                        0L
+                );
+
+        ScheduleResponse response =
+                sut.update(1L, 10L, request);
 
         assertThat(response.title()).isEqualTo("변경");
         assertThat(response.version()).isZero();
+
         then(scheduleRepository).should().flush();
     }
 
     @Test
     void update_일정이_없으면_NOT_FOUND() {
-        given(scheduleRepository.findById(10L)).willReturn(Optional.empty());
-        ScheduleUpdateRequest request = new ScheduleUpdateRequest("변경", null, null, 0L);
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> sut.update(1L, 10L, request))
+        ScheduleUpdateRequest request =
+                new ScheduleUpdateRequest(
+                        "변경",
+                        null,
+                        null,
+                        0L
+                );
+
+        assertThatThrownBy(() ->
+                sut.update(1L, 10L, request)
+        )
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
@@ -60,9 +86,17 @@ class ScheduleServiceTest {
 
     @Test
     void update_변경할_필드가_없으면_INVALID_INPUT() {
-        ScheduleUpdateRequest request = new ScheduleUpdateRequest(null, null, null, 0L);
+        ScheduleUpdateRequest request =
+                new ScheduleUpdateRequest(
+                        null,
+                        null,
+                        null,
+                        0L
+                );
 
-        assertThatThrownBy(() -> sut.update(1L, 10L, request))
+        assertThatThrownBy(() ->
+                sut.update(1L, 10L, request)
+        )
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVALID_INPUT);
@@ -71,10 +105,21 @@ class ScheduleServiceTest {
     @Test
     void update_작성자가_아니면_FORBIDDEN() {
         Schedule schedule = schedule(1L, 0L);
-        given(scheduleRepository.findById(10L)).willReturn(Optional.of(schedule));
-        ScheduleUpdateRequest request = new ScheduleUpdateRequest("변경", null, null, 0L);
 
-        assertThatThrownBy(() -> sut.update(2L, 10L, request))
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        ScheduleUpdateRequest request =
+                new ScheduleUpdateRequest(
+                        "변경",
+                        null,
+                        null,
+                        0L
+                );
+
+        assertThatThrownBy(() ->
+                sut.update(2L, 10L, request)
+        )
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.FORBIDDEN);
@@ -83,13 +128,116 @@ class ScheduleServiceTest {
     @Test
     void update_version이_다르면_CONFLICT() {
         Schedule schedule = schedule(1L, 0L);
-        given(scheduleRepository.findById(10L)).willReturn(Optional.of(schedule));
-        ScheduleUpdateRequest request = new ScheduleUpdateRequest("변경", null, null, 99L);
 
-        assertThatThrownBy(() -> sut.update(1L, 10L, request))
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        ScheduleUpdateRequest request =
+                new ScheduleUpdateRequest(
+                        "변경",
+                        null,
+                        null,
+                        99L
+                );
+
+        assertThatThrownBy(() ->
+                sut.update(1L, 10L, request)
+        )
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SCHEDULE_CONFLICT);
+    }
+
+    @Test
+    void findById_작성자는_조회할_수_있다() {
+        Schedule schedule = schedule(1L, 0L);
+
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        given(scheduleAccessPolicy.canViewSchedule(1L, schedule))
+                .willReturn(true);
+
+        ScheduleResponse response = sut.findById(1L, 10L);
+
+        assertThat(response).isNotNull();
+    }
+
+    @Test
+    void findById_ACCEPTED_참여자는_조회할_수_있다() {
+        Schedule schedule = schedule(1L, 0L);
+
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        given(scheduleAccessPolicy.canViewSchedule(2L, schedule))
+                .willReturn(true);
+
+        ScheduleResponse response = sut.findById(2L, 10L);
+
+        assertThat(response).isNotNull();
+    }
+
+    @Test
+    void findById_PENDING_초대자는_FORBIDDEN() {
+        Schedule schedule = schedule(1L, 0L);
+
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        given(scheduleAccessPolicy.canViewSchedule(2L, schedule))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> sut.findById(2L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+    @Test
+    void findById_REJECTED_참여자는_FORBIDDEN() {
+        Schedule schedule = schedule(1L, 0L);
+
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        given(scheduleAccessPolicy.canViewSchedule(2L, schedule))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> sut.findById(2L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void findById_다른_일정의_ACCEPTED_참여자는_FORBIDDEN() {
+        Schedule targetSchedule = schedule(1L, 0L);
+
+        given(scheduleRepository.findById(20L))
+                .willReturn(Optional.of(targetSchedule));
+
+        given(scheduleAccessPolicy.canViewSchedule(2L, targetSchedule))
+                .willReturn(false);
+
+        assertThatThrownBy(() -> sut.findById(2L, 20L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.FORBIDDEN);
+    }
+
+    @Test
+    void findById_일정이_없으면_NOT_FOUND() {
+        // given
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() ->
+                sut.findById(2L, 10L)
+        )
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SCHEDULE_NOT_FOUND);
     }
 
     private Schedule schedule(Long ownerId, Long version) {
@@ -99,7 +247,13 @@ class ScheduleServiceTest {
                 null,
                 LocalDateTime.now().plusDays(1)
         );
-        ReflectionTestUtils.setField(schedule, "version", version);
+
+        ReflectionTestUtils.setField(
+                schedule,
+                "version",
+                version
+        );
+
         return schedule;
     }
 }
