@@ -1,4 +1,4 @@
-기package com.dsa.schedule_manager.schedule.authorization;
+package com.dsa.schedule_manager.schedule.authorization;
 
 import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
