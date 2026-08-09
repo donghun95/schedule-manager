@@ -9,6 +9,7 @@ import com.dsa.schedule_manager.schedule.dto.ScheduleCreateRequest;
 import com.dsa.schedule_manager.schedule.dto.ScheduleResponse;
 import com.dsa.schedule_manager.schedule.dto.ScheduleStatusChangeRequest;
 import com.dsa.schedule_manager.schedule.dto.ScheduleUpdateRequest;
+import com.dsa.schedule_manager.schedule.repository.ScheduleParticipantRepository;
 import com.dsa.schedule_manager.schedule.repository.ScheduleRepository;
 import com.dsa.schedule_manager.schedule.repository.ScheduleStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleStatusHistoryRepository historyRepository;
+    private final ScheduleParticipantRepository scheduleParticipantRepository;
 
     @Transactional
     public ScheduleResponse create(Long userId, ScheduleCreateRequest request) {
@@ -65,7 +67,25 @@ public class ScheduleService {
 
     @Transactional
     public void delete(Long userId, Long scheduleId) {
-        Schedule schedule = getOwnedSchedule(userId, scheduleId);
+
+        // 1. 일정 존재 여부 확인
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
+
+        // 2. 작성자 권한 검증
+        if (!schedule.isOwnedBy(userId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        // 3. PLANNED 상태 검증 (PLANNED가 아니면 삭제 불가)
+        if (schedule.getStatus() != ScheduleStatus.PLANNED) {
+            throw new BusinessException(ErrorCode.SCHEDULE_DELETE_NOT_ALLOWED);
+        }
+
+        // 4. FK 제약 조건 해결: 연관된 참여자(ScheduleParticipant) 먼저 삭제
+        scheduleParticipantRepository.deleteAllByScheduleId(scheduleId);
+
+        // 5. 일정 삭제
         scheduleRepository.delete(schedule);
     }
 
