@@ -219,7 +219,7 @@ ScheduleParticipant.user가 LAZY이고 DTO 변환 중 User에 접근했다.
 ### 해결
 해당 조회에 @EntityGraph(attributePaths = "user")를 적용했다.
 ### 결과
-Hibernate Statistics 기준 4 queries에서 1 query로 줄었다.
+참여자 상세 조회 Repository 호출에서 N+1을 제거해 조회 쿼리를 4회에서 1회로 줄였다. 실제 Service 요청에서는 일정 및 접근 권한 확인 쿼리가 추가된다.
 ### 선택 이유와 제한
 
 현재 조회는 to-one User를 함께 가져오고 페이징하지 않아
@@ -243,7 +243,7 @@ ScheduleParticipant.user가 LAZY이고 DTO 변환 중 User에 접근했다.
 ### 해결
 해당 조회에 @EntityGraph(attributePaths = "user")를 적용했다.
 ### 결과
-Hibernate Statistics 기준 4 queries에서 1 query로 줄었다.
+참여자 상세 조회 Repository 호출에서 N+1을 제거해 조회 쿼리를 4회에서 1회로 줄였다. 실제 Service 요청에서는 일정 및 접근 권한 확인 쿼리가 추가된다.
 ### 선택 이유와 제한
 
 현재 조회는 to-one User를 함께 가져오고 페이징하지 않아
