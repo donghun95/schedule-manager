@@ -8,11 +8,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
 
   autoconfigure:
     exclude:
       - org.springframework.boot.session.autoconfigure.SessionAutoConfiguration
       - org.springframework.boot.session.data.redis.autoconfigure.SessionDataRedisAutoConfiguration
+
+app:
+  security:
+    csrf-enabled: false

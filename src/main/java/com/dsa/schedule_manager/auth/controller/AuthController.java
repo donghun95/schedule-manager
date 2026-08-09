@@ -4,6 +4,9 @@ import com.dsa.schedule_manager.auth.dto.LoginRequest;
 import com.dsa.schedule_manager.auth.dto.SignupRequest;
 import com.dsa.schedule_manager.auth.service.AuthService;
 import com.dsa.schedule_manager.auth.dto.UserResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -24,6 +27,14 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @Operation(summary = "회원가입")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "회원가입 성공"),
+            @ApiResponse(responseCode = "400", description = "입력값 검증 실패"),
+            @ApiResponse(responseCode = "409", description = "이미 사용 중인 이메일")
+    })
+
+
     @PostMapping("/signup")
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
         UserResponse response = authService.signup(request);
@@ -32,12 +43,27 @@ public class AuthController {
                 .body(response);
     }
 
+    @Operation(summary = "로그인")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "로그인 성공"),
+            @ApiResponse(responseCode = "400", description = "입력값 검증 실패"),
+            @ApiResponse(responseCode = "401", description = "인증 실패")
+    })
+
     @PostMapping("/login")
     public UserResponse login(@Valid @RequestBody LoginRequest request,
                               HttpServletRequest httpRequest,
                               HttpServletResponse httpResponse) {
         return authService.login(request, httpRequest, httpResponse);
     }
+
+    @Operation(summary = "로그아웃")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "로그아웃 성공"),
+            @ApiResponse(responseCode = "401", description = "인증 필요")
+    })
+
+
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request) {

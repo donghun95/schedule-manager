@@ -1,0 +1,9 @@
+app:
+  security:
+    csrf-enabled: false
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false

@@ -9,7 +9,9 @@ import com.dsa.schedule_manager.auth.dto.UserResponse;
 import com.dsa.schedule_manager.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -37,9 +39,12 @@ public class AuthService {
 
         String encoded = passwordEncoder.encode(request.password());
         User user = User.createNewUser(request.email(), encoded, request.nickname());
-        User saved = userRepository.save(user);
-
-        return UserResponse.from(saved);
+        try {
+            return UserResponse.from(userRepository.saveAndFlush(user));
+        } catch (DataIntegrityViolationException ex) {
+            // 사전 중복 검사 이후 동시에 가입한 요청도 같은 API 계약으로 반환합니다.
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_USED);
+        }
     }
 
     public UserResponse login(LoginRequest request,
@@ -54,6 +59,11 @@ public class AuthService {
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authenticated);
         SecurityContextHolder.setContext(context);
+
+        HttpSession session = httpRequest.getSession(false);
+        if(session != null) {
+            httpRequest.changeSessionId();
+        }
 
         securityContextRepository.saveContext(context, httpRequest, httpResponse);
 

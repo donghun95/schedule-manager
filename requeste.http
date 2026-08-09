@@ -1,0 +1,149 @@
+@baseUrl = http://localhost:18080
+
+# 이 파일은 깨끗한 DB에서 위에서부터 한 번 실행하는 시나리오입니다.
+# 다시 실행할 때는 hoon@example.com, second@example.com 데이터를 삭제하거나
+# 두 이메일을 새 값으로 바꾼 뒤 1번부터 시작하세요.
+
+### 1. 첫 번째 계정 가입
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "hoon@example.com",
+  "password": "password123",
+  "nickname": "동훈"
+}
+
+### 2. 첫 번째 계정 로그인 - HTTP Client가 SCHEDULEID 쿠키를 유지합니다
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "hoon@example.com",
+  "password": "password123"
+}
+
+### 3. 일정 등록 - 응답 id와 version을 다음 요청 변수로 저장합니다
+POST {{baseUrl}}/api/schedules
+Content-Type: application/json
+
+{
+  "title": "수학 보강 수업",
+  "description": "고3 미적분 보강",
+  "scheduledAt": "2099-08-01T14:00:00"
+}
+
+> {%
+    client.global.set("scheduleId", response.body.id);
+    client.global.set("staleVersion", response.body.version);
+%}
+
+### 4. 단건 조회 - version 확인
+GET {{baseUrl}}/api/schedules/{{scheduleId}}
+
+### 5. 내 일정 목록
+GET {{baseUrl}}/api/schedules
+
+### 6. 수정 성공 - 응답 version이 1 증가해야 합니다
+PATCH {{baseUrl}}/api/schedules/{{scheduleId}}
+Content-Type: application/json
+
+{
+  "title": "수학 보강 수업 (변경)",
+  "version": {{staleVersion}}
+}
+
+> {%
+    client.global.set("currentVersion", response.body.version);
+%}
+
+### 7. 같은 오래된 version으로 다시 수정 - 409
+PATCH {{baseUrl}}/api/schedules/{{scheduleId}}
+Content-Type: application/json
+
+{
+  "title": "오래된 수정 요청",
+  "version": {{staleVersion}}
+}
+
+### 8. 변경 필드 없는 수정 - 400
+PATCH {{baseUrl}}/api/schedules/{{scheduleId}}
+Content-Type: application/json
+
+{
+  "version": {{currentVersion}}
+}
+
+### 9. 존재하지 않는 일정 - 404
+GET {{baseUrl}}/api/schedules/999999
+
+### 10. 두 번째 계정 가입
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "second@example.com",
+  "password": "password123",
+  "nickname": "철수"
+}
+
+### 11. 두 번째 계정 로그인 - 기존 SCHEDULEID가 교체됩니다
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "second@example.com",
+  "password": "password123"
+}
+
+### 12. 첫 번째 계정 일정 조회 - 403
+GET {{baseUrl}}/api/schedules/{{scheduleId}}
+
+### 13. 첫 번째 계정 일정 수정 - 403
+PATCH {{baseUrl}}/api/schedules/{{scheduleId}}
+Content-Type: application/json
+
+{
+  "title": "권한 없는 수정",
+  "version": {{currentVersion}}
+}
+
+### 14. 첫 번째 계정 일정 삭제 - 403
+DELETE {{baseUrl}}/api/schedules/{{scheduleId}}
+
+### 15. 첫 번째 계정으로 다시 로그인
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "hoon@example.com",
+  "password": "password123"
+}
+
+### 16. 일정 삭제 - 204
+DELETE {{baseUrl}}/api/schedules/{{scheduleId}}
+
+### 17. 삭제된 일정 조회 - 404
+GET {{baseUrl}}/api/schedules/{{scheduleId}}
+
+### 18. 로그아웃 - 204, Redis에서 현재 세션 키가 삭제되어야 합니다
+POST {{baseUrl}}/api/auth/logout
+
+### 19. 로그아웃 후 내 정보 조회 - 401, 새 세션 쿠키를 만들지 않아야 합니다
+GET {{baseUrl}}/api/users/me
+
+### 20. 회원가입 검증 실패 - fieldErrors에 password와 메시지가 있어야 합니다
+POST {{baseUrl}}/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "validation@example.com",
+  "password": "short",
+  "nickname": "동훈"
+}
+
+### 21. 깨진 로그인 JSON - 400, Redis 세션 키를 만들지 않아야 합니다
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
