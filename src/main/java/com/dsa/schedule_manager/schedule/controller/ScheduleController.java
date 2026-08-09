@@ -3,6 +3,7 @@ package com.dsa.schedule_manager.schedule.controller;
 import com.dsa.schedule_manager.auth.service.UserPrincipal;
 import com.dsa.schedule_manager.schedule.dto.ScheduleCreateRequest;
 import com.dsa.schedule_manager.schedule.dto.ScheduleResponse;
+import com.dsa.schedule_manager.schedule.dto.ScheduleStatusChangeRequest;
 import com.dsa.schedule_manager.schedule.dto.ScheduleUpdateRequest;
 import com.dsa.schedule_manager.schedule.service.ScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -102,4 +103,26 @@ public class ScheduleController {
         scheduleService.delete(principal.getId(), id);
         return ResponseEntity.noContent().build();
     }
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "일정 상태 변경", description = "일정의 상태를 변경하고 변경 이력을 남깁니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "상태 변경 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터"),
+            @ApiResponse(responseCode = "403", description = "수정 권한 없음 (작성자만 가능)"),
+            @ApiResponse(responseCode = "404", description = "일정을 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "허용되지 않는 상태 전이")
+    })
+    public ResponseEntity<ScheduleResponse> changeStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody ScheduleStatusChangeRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+
+        // 2. ScheduleService의 changeStatus 호출
+        ScheduleResponse response = scheduleService.changeStatus(principal.getId(), id, request);
+
+        // 3. 200 OK 응답 반환
+        return ResponseEntity.ok(response);
+    }
+
 }
