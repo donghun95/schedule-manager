@@ -1,5 +1,6 @@
 package com.dsa.schedule_manager.schedule.repository;
 
+import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.ScheduleParticipant;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,9 +15,16 @@ public interface ScheduleParticipantRepository
 
     boolean existsByScheduleIdAndUserId(Long scheduleId, Long userId);
 
+    boolean existsByScheduleIdAndUserIdAndStatus(
+            Long scheduleId,
+            Long userId,
+            ParticipantStatus status
+    );
+
     Optional<ScheduleParticipant> findByScheduleIdAndUserId(
             Long scheduleId,
             Long userId);
+
 
     List<ScheduleParticipant> findAllByScheduleIdOrderByIdAsc(Long scheduleId);
 

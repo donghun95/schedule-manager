@@ -96,6 +96,14 @@ class ScheduleParticipantStatusApiIntegrationTest {
                         matchesPattern("/api/schedules/\\d+/participants/\\d+")))
                 .andExpect(jsonPath("$.userId").value(participantId));
 
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/accept",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isNoContent());
+
         mockMvc.perform(post("/api/schedules/{id}/participants", scheduleId)
                         .sessionAttr("SPRING_SECURITY_CONTEXT",
                                 outsiderSession.getAttribute("SPRING_SECURITY_CONTEXT"))

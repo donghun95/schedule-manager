@@ -195,7 +195,12 @@ class ScheduleApiIntegrationTest {
                 owner.getId(), "일정 C", null, LocalDateTime.of(2099, 9, 2, 10, 0)));
         Schedule scheduleA = scheduleRepository.save(Schedule.create(
                 owner.getId(), "일정 A", null, LocalDateTime.of(2099, 9, 3, 10, 0)));
-        participantRepository.save(ScheduleParticipant.of(scheduleC, participant));
+        ScheduleParticipant scheduleCParticipant =
+                ScheduleParticipant.of(scheduleC, participant);
+
+        scheduleCParticipant.accept();
+
+        participantRepository.save(scheduleCParticipant);
 
         MvcResult firstPage = mockMvc.perform(get("/api/schedules")
                         .param("size", "2")
@@ -231,9 +236,42 @@ class ScheduleApiIntegrationTest {
         doneInRange.changeStatus(ScheduleStatus.IN_PROGRESS);
         doneInRange.changeStatus(ScheduleStatus.DONE);
         scheduleRepository.save(doneInRange);
-        participantRepository.save(ScheduleParticipant.of(outsideRange, participant));
-        participantRepository.save(ScheduleParticipant.of(afterRange, participant));
-        participantRepository.save(ScheduleParticipant.of(doneInRange, participant));
+        ScheduleParticipant outsideParticipant =
+                ScheduleParticipant.of(
+                        outsideRange,
+                        participant
+                );
+
+        outsideParticipant.accept();
+
+        participantRepository.save(
+                outsideParticipant
+        );
+
+        ScheduleParticipant afterParticipant =
+                ScheduleParticipant.of(
+                        afterRange,
+                        participant
+                );
+
+        afterParticipant.accept();
+
+        participantRepository.save(
+                afterParticipant
+        );
+
+        ScheduleParticipant doneParticipant =
+                ScheduleParticipant.of(
+                        doneInRange,
+                        participant
+                );
+
+        doneParticipant.accept();
+
+        participantRepository.save(
+                doneParticipant
+        );
+
 
         mockMvc.perform(get("/api/schedules")
                         .param("status", "PLANNED")
