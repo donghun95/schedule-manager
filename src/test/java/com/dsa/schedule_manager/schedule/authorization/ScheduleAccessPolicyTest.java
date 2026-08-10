@@ -1,175 +1,61 @@
 package com.dsa.schedule_manager.schedule.authorization;
 
-import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
-import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.repository.ScheduleParticipantRepository;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 
-@ExtendWith(MockitoExtension.class)
 class ScheduleAccessPolicyTest {
 
-    @Mock
-    ScheduleParticipantRepository participantRepository;
+    private final ScheduleParticipantRepository participantRepository =
+            mock(ScheduleParticipantRepository.class);
 
-    @InjectMocks
-    ScheduleAccessPolicy sut;
+    private final ScheduleAccessPolicy policy =
+            new ScheduleAccessPolicy(participantRepository);
 
     @Test
-    void 작성자는_일정을_조회할_수_있다() {
-        // given
-        Schedule schedule = Schedule.create(
-                1L,
-                "제목",
-                null,
-                LocalDateTime.now().plusDays(1)
-        );
+    void owner는_일정_단건과_이력을_조회할_수_있다() {
+        assertThat(policy.canViewSchedule(ScheduleRelation.OWNER))
+                .isTrue();
 
-        // when
-        boolean result = sut.canViewSchedule(1L, schedule);
-
-        // then
-        assertThat(result).isTrue();
-
-        then(participantRepository)
-                .shouldHaveNoInteractions();
-    }
-    @Test
-    void ACCEPTED_참여자는_일정을_조회할_수_있다() {
-        // given
-        Schedule schedule = Schedule.create(
-                1L,
-                "제목",
-                null,
-                LocalDateTime.now().plusDays(1)
-        );
-
-        ReflectionTestUtils.setField(schedule, "id", 10L);
-
-        given(participantRepository.existsByScheduleIdAndUserIdAndStatus(
-                10L,
-                2L,
-                ParticipantStatus.ACCEPTED
-        )).willReturn(true);
-
-        // when
-        boolean result = sut.canViewSchedule(2L, schedule);
-
-        // then
-        assertThat(result).isTrue();
+        assertThat(policy.canViewStatusHistory(ScheduleRelation.OWNER))
+                .isTrue();
     }
 
     @Test
-    void PENDING_초대자는_일정을_조회할_수_없다() {
-        // given
-        Schedule schedule = Schedule.create(
-                1L,
-                "제목",
-                null,
-                LocalDateTime.now().plusDays(1)
-        );
+    void accepted는_일정_단건과_이력을_조회할_수_있다() {
+        assertThat(policy.canViewSchedule(ScheduleRelation.ACCEPTED))
+                .isTrue();
 
-        ReflectionTestUtils.setField(schedule, "id", 10L);
-
-        given(participantRepository.existsByScheduleIdAndUserIdAndStatus(
-                10L,
-                2L,
-                ParticipantStatus.ACCEPTED
-        )).willReturn(false);
-
-        // when
-        boolean result = sut.canViewSchedule(2L, schedule);
-
-        // then
-        assertThat(result).isFalse();
+        assertThat(policy.canViewStatusHistory(ScheduleRelation.ACCEPTED))
+                .isTrue();
     }
 
     @Test
-    void REJECTED_참여자는_일정을_조회할_수_없다() {
-        // given
-        Schedule schedule = Schedule.create(
-                1L,
-                "제목",
-                null,
-                LocalDateTime.now().plusDays(1)
-        );
+    void pending은_일정_단건과_이력을_조회할_수_없다() {
+        assertThat(policy.canViewSchedule(ScheduleRelation.PENDING))
+                .isFalse();
 
-        ReflectionTestUtils.setField(schedule, "id", 10L);
-
-        given(participantRepository.existsByScheduleIdAndUserIdAndStatus(
-                10L,
-                2L,
-                ParticipantStatus.ACCEPTED
-        )).willReturn(false);
-
-        // when
-        boolean result = sut.canViewSchedule(2L, schedule);
-
-        // then
-        assertThat(result).isFalse();
+        assertThat(policy.canViewStatusHistory(ScheduleRelation.PENDING))
+                .isFalse();
     }
 
     @Test
-    void 관계없는_사용자는_일정을_조회할_수_없다() {
-        // given
-        Schedule schedule = Schedule.create(
-                1L,
-                "제목",
-                null,
-                LocalDateTime.now().plusDays(1)
-        );
+    void rejected는_일정_단건과_이력을_조회할_수_없다() {
+        assertThat(policy.canViewSchedule(ScheduleRelation.REJECTED))
+                .isFalse();
 
-        ReflectionTestUtils.setField(schedule, "id", 10L);
-
-        given(participantRepository.existsByScheduleIdAndUserIdAndStatus(
-                10L,
-                3L,
-                ParticipantStatus.ACCEPTED
-        )).willReturn(false);
-
-        // when
-        boolean result = sut.canViewSchedule(3L, schedule);
-
-        // then
-        assertThat(result).isFalse();
+        assertThat(policy.canViewStatusHistory(ScheduleRelation.REJECTED))
+                .isFalse();
     }
 
     @Test
-    void 다른_일정의_ACCEPTED_참여자는_현재_일정을_조회할_수_없다() {
-        // given
-        Schedule targetSchedule = Schedule.create(
-                1L,
-                "제목",
-                null,
-                LocalDateTime.now().plusDays(1)
-        );
+    void 관계없는_사용자는_일정_단건과_이력을_조회할_수_없다() {
+        assertThat(policy.canViewSchedule(ScheduleRelation.NONE))
+                .isFalse();
 
-        ReflectionTestUtils.setField(targetSchedule, "id", 20L);
-
-        given(participantRepository.existsByScheduleIdAndUserIdAndStatus(
-                20L,
-                2L,
-                ParticipantStatus.ACCEPTED
-        )).willReturn(false);
-
-        // when
-        boolean result = sut.canViewSchedule(2L, targetSchedule);
-
-        // then
-        assertThat(result).isFalse();
+        assertThat(policy.canViewStatusHistory(ScheduleRelation.NONE))
+                .isFalse();
     }
-
-
-
-
 }
