@@ -5,7 +5,6 @@ import com.dsa.schedule_manager.schedule.domain.Schedule;
 import org.springframework.stereotype.Component;
 import com.dsa.schedule_manager.schedule.repository.ScheduleParticipantRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor

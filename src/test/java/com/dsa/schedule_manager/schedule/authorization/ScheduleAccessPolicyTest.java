@@ -58,4 +58,84 @@ class ScheduleAccessPolicyTest {
         assertThat(policy.canViewStatusHistory(ScheduleRelation.NONE))
                 .isFalse();
     }
+
+    @Test
+    void owner는_모든_상태의_참여자를_조회할_수_있다() {
+        ParticipantVisibility result =
+                policy.participantVisibility(ScheduleRelation.OWNER);
+
+        assertThat(result)
+                .isEqualTo(ParticipantVisibility.ALL);
+    }
+
+    @Test
+    void accepted는_accepted_상태의_참여자만_조회할_수_있다() {
+        ParticipantVisibility result =
+                policy.participantVisibility(ScheduleRelation.ACCEPTED);
+
+        assertThat(result)
+                .isEqualTo(ParticipantVisibility.ACCEPTED_ONLY);
+    }
+
+    @Test
+    void pending은_참여자_목록을_조회할_수_없다() {
+        ParticipantVisibility result =
+                policy.participantVisibility(ScheduleRelation.PENDING);
+
+        assertThat(result)
+                .isEqualTo(ParticipantVisibility.NONE);
+    }
+
+    @Test
+    void rejected는_참여자_목록을_조회할_수_없다() {
+        ParticipantVisibility result =
+                policy.participantVisibility(ScheduleRelation.REJECTED);
+
+        assertThat(result)
+                .isEqualTo(ParticipantVisibility.NONE);
+    }
+
+    @Test
+    void 관계없는_사용자는_참여자_목록을_조회할_수_없다() {
+        ParticipantVisibility result =
+                policy.participantVisibility(ScheduleRelation.NONE);
+
+        assertThat(result)
+                .isEqualTo(ParticipantVisibility.NONE);
+    }
+
+    @Test
+    void owner는_일정을_관리할_수_있다() {
+        boolean result = policy.canManageSchedule(ScheduleRelation.OWNER);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void pending_참여자는_일정을_관리할_수_없다() {
+        boolean result = policy.canManageSchedule(ScheduleRelation.PENDING);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void accepted_참여자는_일정을_관리할_수_없다() {
+        boolean result = policy.canManageSchedule(ScheduleRelation.ACCEPTED);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void rejected_참여자는_일정을_관리할_수_없다() {
+        boolean result = policy.canManageSchedule(ScheduleRelation.REJECTED);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void 관계없는_사용자는_일정을_관리할_수_없다() {
+        boolean result = policy.canManageSchedule(ScheduleRelation.NONE);
+
+        assertThat(result).isFalse();
+    }
 }
