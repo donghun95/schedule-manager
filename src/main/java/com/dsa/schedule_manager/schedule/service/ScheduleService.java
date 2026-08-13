@@ -3,7 +3,8 @@ package com.dsa.schedule_manager.schedule.service;
 import com.dsa.schedule_manager.common.error.BusinessException;
 import com.dsa.schedule_manager.common.error.ErrorCode;
 import com.dsa.schedule_manager.schedule.authorization.ScheduleAccessPolicy;
-import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelation;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelationResolver;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.domain.ScheduleStatus;
 import com.dsa.schedule_manager.schedule.dto.*;
@@ -23,6 +24,7 @@ public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleParticipantRepository participantRepository;
     private final ScheduleAccessPolicy scheduleAccessPolicy;
+    private final ScheduleRelationResolver scheduleRelationResolver;
 
     @Transactional
     public ScheduleResponse create(Long userId, ScheduleCreateRequest request) {
@@ -39,7 +41,11 @@ public class ScheduleService {
     public ScheduleResponse findById(Long userId, Long scheduleId) {
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
-        if (!scheduleAccessPolicy.canViewSchedule(userId, schedule)) {
+
+
+        ScheduleRelation relation =
+                scheduleRelationResolver.resolve(userId, schedule);
+        if (!scheduleAccessPolicy.canViewSchedule(relation)) {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
         return ScheduleResponse.from(schedule);

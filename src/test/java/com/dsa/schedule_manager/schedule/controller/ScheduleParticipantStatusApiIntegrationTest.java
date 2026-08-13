@@ -314,6 +314,15 @@ class ScheduleParticipantStatusApiIntegrationTest {
         addParticipant(ownerSession, scheduleId, firstParticipantId);
         addParticipant(ownerSession, scheduleId, secondParticipantId);
 
+        // firstParticipant만 초대 수락
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/accept",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                firstParticipantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isNoContent());
+
         mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
                         .sessionAttr("SPRING_SECURITY_CONTEXT",
                                 ownerSession.getAttribute("SPRING_SECURITY_CONTEXT")))
@@ -329,7 +338,9 @@ class ScheduleParticipantStatusApiIntegrationTest {
                         .sessionAttr("SPRING_SECURITY_CONTEXT",
                                 firstParticipantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)));
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].userId").value(firstParticipantId))
+                .andExpect(jsonPath("$[0].nickname").value("list-first"));
 
         mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
                         .sessionAttr("SPRING_SECURITY_CONTEXT",
@@ -399,6 +410,167 @@ class ScheduleParticipantStatusApiIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("E_400_001"));
     }
+
+    @Test
+    void PENDING_참여자는_일정_이력_참여자목록을_조회할_수_없다() throws Exception {
+
+        long ownerId = signup("owner13@example.com", "owner13");
+        long participantId = signup("participant13@example.com", "participant13");
+
+        HttpSession ownerSession = login("owner13@example.com");
+        HttpSession participantSession = login("participant13@example.com");
+
+
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr("SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "PENDING 권한 테스트",
+                                  "scheduledAt": "2099-08-16T10:00:00"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long scheduleId = number(created, "$.id");
+        addParticipant(ownerSession, scheduleId, participantId);
+
+        mockMvc.perform(get("/api/schedules/{id}", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("E_403_001"));
+
+        mockMvc.perform(get("/api/schedules/{id}/history", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("E_403_001"));
+
+        mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("E_403_001"));
+
+    }
+
+    @Test
+    void REJECTED_참여자는_일정_이력_참여자목록을_조회할_수_없다() throws Exception {
+
+        signup("owner13@example.com", "owner13");
+        long participantId = signup("participant13@example.com", "participant13");
+
+        HttpSession ownerSession = login("owner13@example.com");
+        HttpSession participantSession = login("participant13@example.com");
+
+
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr("SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "REJECTED 권한 테스트",
+                                  "scheduledAt": "2099-08-16T10:00:00"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long scheduleId = number(created, "$.id");
+        addParticipant(ownerSession, scheduleId, participantId);
+
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/reject",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/schedules/{id}", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("E_403_001"));
+
+        mockMvc.perform(get("/api/schedules/{id}/history", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("E_403_001"));
+
+        mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("E_403_001"));
+
+    }
+
+
+    @Test
+    void ACCEPTED_참여자는_일정_이력_참여자목록을_조회할_수_있다() throws Exception {
+
+        signup("owner13@example.com", "owner13");
+        long participantId = signup("participant13@example.com", "participant13");
+
+        HttpSession ownerSession = login("owner13@example.com");
+        HttpSession participantSession = login("participant13@example.com");
+
+
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr("SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "ACCEPTED 권한 테스트",
+                                  "scheduledAt": "2099-08-16T10:00:00"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long scheduleId = number(created, "$.id");
+        addParticipant(ownerSession, scheduleId, participantId);
+
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/accept",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/schedules/{id}", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/schedules/{id}/history", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].userId").value(participantId));
+
+    }
+
 
     private long signup(String email, String nickname) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/signup")

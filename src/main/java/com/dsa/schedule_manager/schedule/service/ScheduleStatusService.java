@@ -2,6 +2,9 @@ package com.dsa.schedule_manager.schedule.service;
 
 import com.dsa.schedule_manager.common.error.BusinessException;
 import com.dsa.schedule_manager.common.error.ErrorCode;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleAccessPolicy;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelation;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelationResolver;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.domain.ScheduleStatus;
 import com.dsa.schedule_manager.schedule.domain.ScheduleStatusHistory;
@@ -24,6 +27,8 @@ public class ScheduleStatusService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleParticipantRepository participantRepository;
     private final ScheduleStatusHistoryRepository historyRepository;
+    private final ScheduleRelationResolver scheduleRelationResolver;
+    private final ScheduleAccessPolicy scheduleAccessPolicy;
 
     @Transactional
     public ScheduleResponse changeStatus(
@@ -52,7 +57,12 @@ public class ScheduleStatusService {
             Long userId,
             Long scheduleId) {
         Schedule schedule = findSchedule(scheduleId);
-        requireAccessible(schedule, userId);
+        ScheduleRelation relation =
+                scheduleRelationResolver.resolve(userId, schedule);
+
+        if(!scheduleAccessPolicy.canViewStatusHistory(relation)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
         return historyRepository.findAllByScheduleIdOrderByIdAsc(scheduleId)
                 .stream()
                 .map(ScheduleStatusHistoryResponse::from)

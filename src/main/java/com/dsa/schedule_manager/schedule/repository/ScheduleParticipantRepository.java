@@ -29,6 +29,12 @@ public interface ScheduleParticipantRepository
     List<ScheduleParticipant> findAllByScheduleIdOrderByIdAsc(Long scheduleId);
 
     @EntityGraph(attributePaths = "user")
+    List<ScheduleParticipant> findAllByScheduleIdAndStatus(
+            Long scheduleId,
+            ParticipantStatus status
+    );
+
+    @EntityGraph(attributePaths = "user")
     @Query("""
             select sp
             from ScheduleParticipant sp

@@ -4,6 +4,8 @@ import com.dsa.schedule_manager.common.error.BusinessException;
 import com.dsa.schedule_manager.common.error.ErrorCode;
 import com.dsa.schedule_manager.schedule.authorization.ScheduleAccessPolicy;
 import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelation;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelationResolver;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.dto.ScheduleResponse;
 import com.dsa.schedule_manager.schedule.dto.ScheduleUpdateRequest;
@@ -35,6 +37,9 @@ class ScheduleServiceTest {
 
     @Mock
     ScheduleAccessPolicy scheduleAccessPolicy;
+
+    @Mock
+    ScheduleRelationResolver scheduleRelationResolver;
 
     @InjectMocks
     ScheduleService sut;
@@ -155,7 +160,10 @@ class ScheduleServiceTest {
         given(scheduleRepository.findById(10L))
                 .willReturn(Optional.of(schedule));
 
-        given(scheduleAccessPolicy.canViewSchedule(1L, schedule))
+        given(scheduleRelationResolver.resolve(1L, schedule))
+                .willReturn(ScheduleRelation.OWNER);
+
+        given(scheduleAccessPolicy.canViewSchedule(ScheduleRelation.OWNER))
                 .willReturn(true);
 
         ScheduleResponse response = sut.findById(1L, 10L);
@@ -170,7 +178,10 @@ class ScheduleServiceTest {
         given(scheduleRepository.findById(10L))
                 .willReturn(Optional.of(schedule));
 
-        given(scheduleAccessPolicy.canViewSchedule(2L, schedule))
+        given(scheduleRelationResolver.resolve(2L, schedule))
+                .willReturn(ScheduleRelation.ACCEPTED);
+
+        given(scheduleAccessPolicy.canViewSchedule(ScheduleRelation.ACCEPTED))
                 .willReturn(true);
 
         ScheduleResponse response = sut.findById(2L, 10L);
@@ -185,7 +196,10 @@ class ScheduleServiceTest {
         given(scheduleRepository.findById(10L))
                 .willReturn(Optional.of(schedule));
 
-        given(scheduleAccessPolicy.canViewSchedule(2L, schedule))
+        given(scheduleRelationResolver.resolve(2L, schedule))
+                .willReturn(ScheduleRelation.PENDING);
+
+        given(scheduleAccessPolicy.canViewSchedule(ScheduleRelation.PENDING))
                 .willReturn(false);
 
         assertThatThrownBy(() -> sut.findById(2L, 10L))
@@ -200,7 +214,10 @@ class ScheduleServiceTest {
         given(scheduleRepository.findById(10L))
                 .willReturn(Optional.of(schedule));
 
-        given(scheduleAccessPolicy.canViewSchedule(2L, schedule))
+        given(scheduleRelationResolver.resolve(2L, schedule))
+                .willReturn(ScheduleRelation.REJECTED);
+
+        given(scheduleAccessPolicy.canViewSchedule(ScheduleRelation.REJECTED))
                 .willReturn(false);
 
         assertThatThrownBy(() -> sut.findById(2L, 10L))
@@ -216,7 +233,10 @@ class ScheduleServiceTest {
         given(scheduleRepository.findById(20L))
                 .willReturn(Optional.of(targetSchedule));
 
-        given(scheduleAccessPolicy.canViewSchedule(2L, targetSchedule))
+        given(scheduleRelationResolver.resolve(2L, targetSchedule))
+                .willReturn(ScheduleRelation.NONE);
+
+        given(scheduleAccessPolicy.canViewSchedule(ScheduleRelation.NONE))
                 .willReturn(false);
 
         assertThatThrownBy(() -> sut.findById(2L, 20L))

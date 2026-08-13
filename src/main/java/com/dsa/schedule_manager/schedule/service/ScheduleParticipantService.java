@@ -2,6 +2,11 @@ package com.dsa.schedule_manager.schedule.service;
 
 import com.dsa.schedule_manager.common.error.BusinessException;
 import com.dsa.schedule_manager.common.error.ErrorCode;
+import com.dsa.schedule_manager.schedule.authorization.ParticipantVisibility;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleAccessPolicy;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelation;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelationResolver;
+import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.domain.ScheduleParticipant;
 import com.dsa.schedule_manager.schedule.dto.ScheduleParticipantDetailResponse;
@@ -23,6 +28,8 @@ public class ScheduleParticipantService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleParticipantRepository participantRepository;
     private final UserRepository userRepository;
+    private final ScheduleRelationResolver scheduleRelationResolver;
+    private final ScheduleAccessPolicy scheduleAccessPolicy;
 
     @Transactional
     public ScheduleParticipantResponse addParticipant(
@@ -61,15 +68,31 @@ public class ScheduleParticipantService {
     public List<ScheduleParticipantDetailResponse> getParticipants(
             Long requesterId,
             Long scheduleId) {
+
         Schedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCHEDULE_NOT_FOUND));
-        if (!schedule.isOwnedBy(requesterId)
-                && !participantRepository.existsByScheduleIdAndUserId(
-                        scheduleId, requesterId)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
-        return participantRepository.findAllWithUserByScheduleId(scheduleId)
-                .stream()
+
+        ScheduleRelation relation =
+                scheduleRelationResolver.resolve(requesterId, schedule);
+
+        ParticipantVisibility visibility =
+                scheduleAccessPolicy.participantVisibility(relation);
+
+        List<ScheduleParticipant> participants = switch (visibility) {
+            case ALL ->
+                    participantRepository.findAllWithUserByScheduleId(scheduleId);
+
+            case ACCEPTED_ONLY ->
+                    participantRepository.findAllByScheduleIdAndStatus(
+                            scheduleId,
+                            ParticipantStatus.ACCEPTED
+                    );
+
+            case NONE ->
+                    throw new BusinessException(ErrorCode.FORBIDDEN);
+        };
+
+        return participants.stream()
                 .map(ScheduleParticipantDetailResponse::from)
                 .toList();
     }

@@ -2,6 +2,9 @@ package com.dsa.schedule_manager.schedule.service;
 
 import com.dsa.schedule_manager.common.error.BusinessException;
 import com.dsa.schedule_manager.common.error.ErrorCode;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelation;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleRelationResolver;
+import com.dsa.schedule_manager.schedule.authorization.ScheduleAccessPolicy;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.domain.ScheduleStatus;
 import com.dsa.schedule_manager.schedule.domain.ScheduleStatusHistory;
@@ -37,6 +40,12 @@ class ScheduleStatusServiceTest {
 
     @Mock
     ScheduleStatusHistoryRepository historyRepository;
+
+    @Mock
+    ScheduleRelationResolver scheduleRelationResolver;
+
+    @Mock
+    ScheduleAccessPolicy scheduleAccessPolicy;
 
     @InjectMocks
     ScheduleStatusService sut;
@@ -128,9 +137,18 @@ class ScheduleStatusServiceTest {
     @Test
     void 참여자는_상태_이력을_조회할_수_있다() {
         Schedule schedule = schedule(1L, 0L);
-        given(scheduleRepository.findById(10L)).willReturn(Optional.of(schedule));
-        given(participantRepository.existsByScheduleIdAndUserId(10L, 2L)).willReturn(true);
-        given(historyRepository.findAllByScheduleIdOrderByIdAsc(10L)).willReturn(java.util.List.of());
+
+        given(scheduleRepository.findById(10L))
+                .willReturn(Optional.of(schedule));
+
+        given(scheduleRelationResolver.resolve(2L, schedule))
+                .willReturn(ScheduleRelation.ACCEPTED);
+
+        given(scheduleAccessPolicy.canViewStatusHistory(ScheduleRelation.ACCEPTED))
+                .willReturn(true);
+
+        given(historyRepository.findAllByScheduleIdOrderByIdAsc(10L))
+                .willReturn(java.util.List.of());
 
         assertThat(sut.getHistory(2L, 10L)).isEmpty();
     }
