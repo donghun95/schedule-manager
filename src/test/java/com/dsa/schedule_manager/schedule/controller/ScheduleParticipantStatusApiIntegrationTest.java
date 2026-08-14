@@ -291,10 +291,12 @@ class ScheduleParticipantStatusApiIntegrationTest {
         signup("list-owner@example.com", "list-owner");
         long firstParticipantId = signup("list-first@example.com", "list-first");
         long secondParticipantId = signup("list-second@example.com", "list-second");
+        long thirdParticipantId = signup("list-third@example.com", "list-third");
         signup("list-outsider@example.com", "list-outsider");
 
         HttpSession ownerSession = login("list-owner@example.com");
         HttpSession firstParticipantSession = login("list-first@example.com");
+        HttpSession thirdParticipantSession = login("list-third@example.com");
         HttpSession outsiderSession = login("list-outsider@example.com");
 
         MvcResult created = mockMvc.perform(post("/api/schedules")
@@ -313,6 +315,7 @@ class ScheduleParticipantStatusApiIntegrationTest {
 
         addParticipant(ownerSession, scheduleId, firstParticipantId);
         addParticipant(ownerSession, scheduleId, secondParticipantId);
+        addParticipant(ownerSession, scheduleId, thirdParticipantId);
 
         // firstParticipant만 초대 수락
         mockMvc.perform(patch(
@@ -323,16 +326,33 @@ class ScheduleParticipantStatusApiIntegrationTest {
                                 firstParticipantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
                 .andExpect(status().isNoContent());
 
+        // thirdParticipant는 초대 거절
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/reject",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                thirdParticipantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isNoContent());
+
         mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
                         .sessionAttr("SPRING_SECURITY_CONTEXT",
                                 ownerSession.getAttribute("SPRING_SECURITY_CONTEXT")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$", hasSize(3)))
+
                 .andExpect(jsonPath("$[0].userId").value(firstParticipantId))
                 .andExpect(jsonPath("$[0].nickname").value("list-first"))
+                .andExpect(jsonPath("$[0].status").value("ACCEPTED"))
                 .andExpect(jsonPath("$[0].joinedAt").isNotEmpty())
+
                 .andExpect(jsonPath("$[1].userId").value(secondParticipantId))
-                .andExpect(jsonPath("$[1].nickname").value("list-second"));
+                .andExpect(jsonPath("$[1].nickname").value("list-second"))
+                .andExpect(jsonPath("$[1].status").value("PENDING"))
+
+                .andExpect(jsonPath("$[2].userId").value(thirdParticipantId))
+                .andExpect(jsonPath("$[2].nickname").value("list-third"))
+                .andExpect(jsonPath("$[2].status").value("REJECTED"));
 
         mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
                         .sessionAttr("SPRING_SECURITY_CONTEXT",
@@ -340,7 +360,8 @@ class ScheduleParticipantStatusApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].userId").value(firstParticipantId))
-                .andExpect(jsonPath("$[0].nickname").value("list-first"));
+                .andExpect(jsonPath("$[0].nickname").value("list-first"))
+                .andExpect(jsonPath("$[0].status").value("ACCEPTED"));
 
         mockMvc.perform(get("/api/schedules/{id}/participants", scheduleId)
                         .sessionAttr("SPRING_SECURITY_CONTEXT",
@@ -569,6 +590,116 @@ class ScheduleParticipantStatusApiIntegrationTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].userId").value(participantId));
 
+    }
+
+    @Test
+    void PENDING_초대만_내_초대_목록에_조회된다() throws Exception {
+
+        // 1. 사용자 생성
+        signup("invite-owner@example.com", "invite-owner");
+
+        long pendingUserId =
+                signup("invite-pending@example.com", "invite-pending");
+
+        long acceptedUserId =
+                signup("invite-accepted@example.com", "invite-accepted");
+
+        long rejectedUserId =
+                signup("invite-rejected@example.com", "invite-rejected");
+
+
+        // 2. 로그인
+        HttpSession ownerSession =
+                login("invite-owner@example.com");
+
+        HttpSession pendingSession =
+                login("invite-pending@example.com");
+
+        HttpSession acceptedSession =
+                login("invite-accepted@example.com");
+
+        HttpSession rejectedSession =
+                login("invite-rejected@example.com");
+
+
+        // 3. Owner가 일정 생성
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "title": "초대 목록 테스트",
+                              "scheduledAt": "2099-08-20T10:00:00"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long scheduleId = number(created, "$.id");
+
+
+        // 4. 세 사용자를 일정에 초대
+        // 이 시점에서는 모두 PENDING
+        addParticipant(ownerSession, scheduleId, pendingUserId);
+        addParticipant(ownerSession, scheduleId, acceptedUserId);
+        addParticipant(ownerSession, scheduleId, rejectedUserId);
+
+
+        // 5. acceptedUser는 초대 수락
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/accept",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                acceptedSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isNoContent());
+
+
+        // 6. rejectedUser는 초대 거절
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/reject",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                rejectedSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isNoContent());
+
+
+        // 7. PENDING 사용자는 자신의 초대를 조회할 수 있다.
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                pendingSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].scheduleId").value(scheduleId))
+                .andExpect(jsonPath("$[0].title").value("초대 목록 테스트"))
+                .andExpect(jsonPath("$[0].scheduledAt")
+                        .value("2099-08-20T10:00:00"))
+                .andExpect(jsonPath("$[0].ownerNickname")
+                        .value("invite-owner"))
+                .andExpect(jsonPath("$[0].status")
+                        .value("PENDING"));
+
+
+        // 8. 이미 수락한 사용자는 PENDING 초대가 없다.
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                acceptedSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+
+        // 9. 이미 거절한 사용자도 PENDING 초대가 없다.
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                rejectedSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
     }
 
 

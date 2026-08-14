@@ -1,19 +1,25 @@
 package com.dsa.schedule_manager.schedule.dto;
 
+import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.ScheduleParticipant;
 import java.time.LocalDateTime;
 
 public record ScheduleParticipantDetailResponse(
-        Long id,
         Long userId,
+        String email,
         String nickname,
-        LocalDateTime joinedAt
+        LocalDateTime joinedAt,
+        ParticipantStatus status
 ) {
-    public static ScheduleParticipantDetailResponse from(ScheduleParticipant participant) {
+    public static ScheduleParticipantDetailResponse from(
+            ScheduleParticipant participant
+    ) {
         return new ScheduleParticipantDetailResponse(
-                participant.getId(),
                 participant.getUser().getId(),
+                participant.getUser().getEmail(),
                 participant.getUser().getNickname(),
-                participant.getCreatedAt());
+                participant.getCreatedAt(),
+                participant.getStatus()
+        );
     }
 }

@@ -9,6 +9,7 @@ import com.dsa.schedule_manager.schedule.authorization.ScheduleRelationResolver;
 import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.domain.ScheduleParticipant;
+import com.dsa.schedule_manager.schedule.dto.ScheduleInvitationResponse;
 import com.dsa.schedule_manager.schedule.dto.ScheduleParticipantDetailResponse;
 import com.dsa.schedule_manager.schedule.dto.ScheduleParticipantResponse;
 import com.dsa.schedule_manager.schedule.repository.ScheduleParticipantRepository;
@@ -95,6 +96,15 @@ public class ScheduleParticipantService {
         return participants.stream()
                 .map(ScheduleParticipantDetailResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleInvitationResponse> getMyInvitations(Long requesterId) {
+
+        return participantRepository.findInvitationsByUserIdAndStatus(
+                requesterId,
+                ParticipantStatus.PENDING
+        );
     }
 
     private Schedule getOwnedSchedule(Long requesterId, Long scheduleId) {
