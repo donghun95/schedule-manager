@@ -34,7 +34,6 @@ public class AuthController {
             @ApiResponse(responseCode = "409", description = "이미 사용 중인 이메일")
     })
 
-
     @PostMapping("/signup")
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
         UserResponse response = authService.signup(request);
@@ -62,8 +61,6 @@ public class AuthController {
             @ApiResponse(responseCode = "204", description = "로그아웃 성공"),
             @ApiResponse(responseCode = "401", description = "인증 필요")
     })
-
-
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request) {

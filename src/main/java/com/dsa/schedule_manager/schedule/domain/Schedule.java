@@ -1,6 +1,8 @@
 package com.dsa.schedule_manager.schedule.domain;
 
-import com.dsa.schedule_manager.user.domain.BaseEntity;
+import com.dsa.schedule_manager.common.error.BusinessException;
+import com.dsa.schedule_manager.common.error.ErrorCode;
+import com.dsa.schedule_manager.common.persistence.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -51,5 +53,15 @@ public class Schedule extends BaseEntity {
     }
     public boolean isOwnedBy(Long userId) {
         return this.ownerId.equals(userId);
+    }
+
+    public void changeStatus(ScheduleStatus target) {
+        if (this.status == target) {
+            throw new BusinessException(ErrorCode.SAME_STATUS_TRANSITION);
+        }
+        if (!this.status.canTransitionTo(target)) {
+            throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        this.status = target;
     }
 }
