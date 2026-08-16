@@ -9,6 +9,7 @@ import com.dsa.schedule_manager.schedule.authorization.ScheduleRelationResolver;
 import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.Schedule;
 import com.dsa.schedule_manager.schedule.domain.ScheduleParticipant;
+import com.dsa.schedule_manager.schedule.domain.ScheduleStatus;
 import com.dsa.schedule_manager.schedule.dto.ScheduleInvitationResponse;
 import com.dsa.schedule_manager.schedule.dto.ScheduleParticipantDetailResponse;
 import com.dsa.schedule_manager.schedule.dto.ScheduleParticipantResponse;
@@ -103,7 +104,9 @@ public class ScheduleParticipantService {
 
         return participantRepository.findInvitationsByUserIdAndStatus(
                 requesterId,
-                ParticipantStatus.PENDING
+                ParticipantStatus.PENDING,
+                ScheduleStatus.PLANNED
+
         );
     }
 
@@ -130,6 +133,13 @@ public class ScheduleParticipantService {
                                 new BusinessException(
                                         ErrorCode.PARTICIPANT_NOT_FOUND
                                 ));
+
+        if (participant.getSchedule().getStatus() != ScheduleStatus.PLANNED) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
+            );
+        }
+
         participant.accept();
     }
 
@@ -147,6 +157,13 @@ public class ScheduleParticipantService {
                                 new BusinessException(
                                         ErrorCode.PARTICIPANT_NOT_FOUND
                                 ));
+
+        if (participant.getSchedule().getStatus() != ScheduleStatus.PLANNED) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
+            );
+        }
+
         participant.reject();
     }
 }

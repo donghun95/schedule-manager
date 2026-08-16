@@ -344,7 +344,7 @@ class ScheduleParticipantStatusApiIntegrationTest {
                 .andExpect(jsonPath("$[0].userId").value(firstParticipantId))
                 .andExpect(jsonPath("$[0].nickname").value("list-first"))
                 .andExpect(jsonPath("$[0].status").value("ACCEPTED"))
-                .andExpect(jsonPath("$[0].joinedAt").isNotEmpty())
+                .andExpect(jsonPath("$[0].invitedAt").isNotEmpty())
 
                 .andExpect(jsonPath("$[1].userId").value(secondParticipantId))
                 .andExpect(jsonPath("$[1].nickname").value("list-second"))
@@ -401,6 +401,12 @@ class ScheduleParticipantStatusApiIntegrationTest {
         mockMvc.perform(get("/api/schedules/1/history"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("E_401_001"));
+
+        // 초대 목록 미인증 요청
+        mockMvc.perform(get("/api/schedules/invitations"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("E_401_001"));
+
 
         signup("validation-owner@example.com", "validation-owner");
         HttpSession ownerSession = login("validation-owner@example.com");
@@ -698,6 +704,312 @@ class ScheduleParticipantStatusApiIntegrationTest {
                         .sessionAttr(
                                 "SPRING_SECURITY_CONTEXT",
                                 rejectedSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void PENDING_사용자는_자신에게_온_초대만_조회한다() throws Exception {
+
+        // 1. Owner 두 명 생성
+        signup("isolation-owner1@example.com", "isolation-owner1");
+        signup("isolation-owner2@example.com", "isolation-owner2");
+
+        // 2. PENDING 사용자 두 명 생성
+        long pendingUser1Id =
+                signup("isolation-pending1@example.com", "isolation-pending1");
+
+        long pendingUser2Id =
+                signup("isolation-pending2@example.com", "isolation-pending2");
+
+        // 3. 로그인
+        HttpSession owner1Session =
+                login("isolation-owner1@example.com");
+
+        HttpSession owner2Session =
+                login("isolation-owner2@example.com");
+
+        HttpSession pendingUser1Session =
+                login("isolation-pending1@example.com");
+
+        // 4. Owner1 일정 생성
+        MvcResult created1 = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                owner1Session.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "title": "첫 번째 초대",
+                              "scheduledAt": "2099-08-21T10:00:00"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long schedule1Id = number(created1, "$.id");
+
+        // 5. Owner2 일정 생성
+        MvcResult created2 = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                owner2Session.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "title": "두 번째 초대",
+                              "scheduledAt": "2099-08-22T10:00:00"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long schedule2Id = number(created2, "$.id");
+
+        // 6. 각각 다른 사용자에게 초대
+        addParticipant(
+                owner1Session,
+                schedule1Id,
+                pendingUser1Id
+        );
+
+        addParticipant(
+                owner2Session,
+                schedule2Id,
+                pendingUser2Id
+        );
+
+        // 7. pendingUser1으로 조회
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                pendingUser1Session.getAttribute(
+                                        "SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+
+                // 본인의 초대 1개만 조회
+                .andExpect(jsonPath("$", hasSize(1)))
+
+                // 그 1개가 실제 본인의 초대인지 확인
+                .andExpect(jsonPath("$[0].scheduleId")
+                        .value(schedule1Id))
+                .andExpect(jsonPath("$[0].title")
+                        .value("첫 번째 초대"))
+                .andExpect(jsonPath("$[0].ownerNickname")
+                        .value("isolation-owner1"))
+                .andExpect(jsonPath("$[0].status")
+                        .value("PENDING"));
+    }
+
+    @Test
+    void IN_PROGRESS_일정의_PENDING_초대는_수락할_수_없다() throws Exception {
+
+        // 1. 사용자 생성
+        signup("progress-owner@example.com", "progress-owner");
+        long participantId =
+                signup("progress-participant@example.com", "progress-participant");
+
+        // 2. 로그인
+        HttpSession ownerSession =
+                login("progress-owner@example.com");
+
+        HttpSession participantSession =
+                login("progress-participant@example.com");
+
+        // 3. 일정 생성
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "title": "진행 중 초대 수락 테스트",
+                              "scheduledAt": "2099-08-23T10:00:00"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long scheduleId = number(created, "$.id");
+
+        // 4. 참여자 초대 → PENDING
+        addParticipant(
+                ownerSession,
+                scheduleId,
+                participantId
+        );
+
+        // 5. 일정 상태를 IN_PROGRESS로 변경
+        mockMvc.perform(patch("/api/schedules/{id}/status", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "toStatus": "IN_PROGRESS",
+                              "version": 0
+                            }
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+
+        // 6. PENDING 참여자가 수락 시도
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/accept",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void IN_PROGRESS_일정의_PENDING_초대는_거절할_수_없다() throws Exception {
+
+        // 1. 사용자 생성
+        signup("reject-progress-owner@example.com", "reject-progress-owner");
+
+        long participantId =
+                signup(
+                        "reject-progress-participant@example.com",
+                        "reject-progress-participant"
+                );
+
+        // 2. 로그인
+        HttpSession ownerSession =
+                login("reject-progress-owner@example.com");
+
+        HttpSession participantSession =
+                login("reject-progress-participant@example.com");
+
+        // 3. 일정 생성
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "title": "진행 중 초대 거절 테스트",
+                              "scheduledAt": "2099-08-24T10:00:00"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long scheduleId = number(created, "$.id");
+
+        // 4. 참여자 초대 → PENDING
+        addParticipant(
+                ownerSession,
+                scheduleId,
+                participantId
+        );
+
+        // 5. 일정 상태 PLANNED → IN_PROGRESS
+        mockMvc.perform(patch("/api/schedules/{id}/status", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "toStatus": "IN_PROGRESS",
+                              "version": 0
+                            }
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+
+        // 6. PENDING 참여자가 거절 시도 → 불가
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/reject",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute(
+                                        "SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void IN_PROGRESS_일정의_PENDING_초대는_목록에_조회되지_않는다() throws Exception {
+
+        // 1. 사용자 생성
+        signup("list-progress-owner@example.com", "list-progress-owner");
+
+        long participantId =
+                signup(
+                        "list-progress-participant@example.com",
+                        "list-progress-participant"
+                );
+
+        // 2. 로그인
+        HttpSession ownerSession =
+                login("list-progress-owner@example.com");
+
+        HttpSession participantSession =
+                login("list-progress-participant@example.com");
+
+        // 3. 일정 생성
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "title": "진행 중 초대 목록 테스트",
+                              "scheduledAt": "2099-08-25T10:00:00"
+                            }
+                            """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long scheduleId = number(created, "$.id");
+
+        // 4. 참여자 초대 → PENDING
+        addParticipant(
+                ownerSession,
+                scheduleId,
+                participantId
+        );
+
+        // 5. 아직 PLANNED일 때는 초대 목록에 보인다
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute(
+                                        "SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].scheduleId").value(scheduleId))
+                .andExpect(jsonPath("$[0].status").value("PENDING"));
+
+        // 6. 일정 상태 PLANNED → IN_PROGRESS
+        mockMvc.perform(patch("/api/schedules/{id}/status", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {
+                              "toStatus": "IN_PROGRESS",
+                              "version": 0
+                            }
+                            """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+
+        // 7. 참여자 상태는 PENDING이어도
+        //    IN_PROGRESS 일정의 초대는 목록에서 제외
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute(
+                                        "SPRING_SECURITY_CONTEXT")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }

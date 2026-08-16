@@ -2,6 +2,7 @@ package com.dsa.schedule_manager.schedule.repository;
 
 import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
 import com.dsa.schedule_manager.schedule.domain.ScheduleParticipant;
+import com.dsa.schedule_manager.schedule.domain.ScheduleStatus;
 import com.dsa.schedule_manager.schedule.dto.ScheduleInvitationResponse;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,23 +37,25 @@ public interface ScheduleParticipantRepository
     );
 
     @Query("""
-        select new com.dsa.schedule_manager.schedule.dto.ScheduleInvitationResponse(
-            s.id,
-            s.title,
-            s.scheduledAt,
-            owner.nickname,
-            sp.status
-        )
-        from ScheduleParticipant sp
-        join sp.schedule s
-        join User owner on owner.id = s.ownerId
-        where sp.user.id = :userId
-          and sp.status = :status
-        order by s.scheduledAt asc, s.id asc
-        """)
+    select new com.dsa.schedule_manager.schedule.dto.ScheduleInvitationResponse(
+        s.id,
+        s.title,
+        s.scheduledAt,
+        owner.nickname,
+        sp.status
+    )
+    from ScheduleParticipant sp
+    join sp.schedule s
+    join User owner on owner.id = s.ownerId
+    where sp.user.id = :userId
+      and sp.status = :status
+      and s.status = :scheduleStatus
+    order by s.scheduledAt asc, s.id asc
+    """)
     List<ScheduleInvitationResponse> findInvitationsByUserIdAndStatus(
             @Param("userId") Long userId,
-            @Param("status") ParticipantStatus status
+            @Param("status") ParticipantStatus status,
+            @Param("scheduleStatus") ScheduleStatus scheduleStatus
     );
 
     @EntityGraph(attributePaths = "user")
