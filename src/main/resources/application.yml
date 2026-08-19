@@ -9,12 +9,6 @@ spring:
     driver-class-name: org.mariadb.jdbc.Driver
 
   jpa:
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        format_sql: true
-    show-sql: true
     open-in-view: false
 
   data:
@@ -33,7 +27,7 @@ app:
     csrf-enabled: ${CSRF_ENABLED:true}
 
 server:
-  port: 18080
+  port: ${PORT:18080}
   servlet:
     session:
       cookie:
@@ -45,6 +39,3 @@ server:
 logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] [%X{traceId}] %-5level %logger - %msg%n"
-  level:
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG

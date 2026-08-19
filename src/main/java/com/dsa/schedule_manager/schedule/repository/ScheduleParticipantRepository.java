@@ -49,13 +49,13 @@ public interface ScheduleParticipantRepository
     join User owner on owner.id = s.ownerId
     where sp.user.id = :userId
       and sp.status = :status
-      and s.status = :scheduleStatus
+      and s.status in :scheduleStatus
     order by s.scheduledAt asc, s.id asc
     """)
     List<ScheduleInvitationResponse> findInvitationsByUserIdAndStatus(
             @Param("userId") Long userId,
             @Param("status") ParticipantStatus status,
-            @Param("scheduleStatus") ScheduleStatus scheduleStatus
+            @Param("scheduleStatus") List<ScheduleStatus> scheduleStatus
     );
 
     @EntityGraph(attributePaths = "user")

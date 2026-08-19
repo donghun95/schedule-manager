@@ -39,6 +39,13 @@ public class ScheduleParticipantService {
             Long scheduleId,
             Long targetUserId) {
         Schedule schedule = getOwnedSchedule(requesterId, scheduleId);
+        // 우선적으로 계획단계인지 진행단계인지를 체크
+        if (!isInvitationAllowedStatus(schedule.getStatus())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
+            );
+        }
+
         if (schedule.isOwnedBy(targetUserId)) {
             throw new BusinessException(ErrorCode.CANNOT_ADD_OWNER_AS_PARTICIPANT);
         }
@@ -105,7 +112,10 @@ public class ScheduleParticipantService {
         return participantRepository.findInvitationsByUserIdAndStatus(
                 requesterId,
                 ParticipantStatus.PENDING,
-                ScheduleStatus.PLANNED
+                List.of(
+                        ScheduleStatus.PLANNED,
+                        ScheduleStatus.IN_PROGRESS
+                )
 
         );
     }
@@ -134,7 +144,9 @@ public class ScheduleParticipantService {
                                         ErrorCode.PARTICIPANT_NOT_FOUND
                                 ));
 
-        if (participant.getSchedule().getStatus() != ScheduleStatus.PLANNED) {
+        if (!isInvitationAllowedStatus(
+                participant.getSchedule().getStatus())) {
+
             throw new BusinessException(
                     ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
             );
@@ -158,12 +170,19 @@ public class ScheduleParticipantService {
                                         ErrorCode.PARTICIPANT_NOT_FOUND
                                 ));
 
-        if (participant.getSchedule().getStatus() != ScheduleStatus.PLANNED) {
+        if (!isInvitationAllowedStatus(
+                participant.getSchedule().getStatus())) {
+
             throw new BusinessException(
                     ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
             );
         }
 
         participant.reject();
+    }
+    // 중복되는 상태 판단 하나로 만들기
+    private boolean isInvitationAllowedStatus(ScheduleStatus status) {
+        return status == ScheduleStatus.PLANNED
+                || status == ScheduleStatus.IN_PROGRESS;
     }
 }

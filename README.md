@@ -1,112 +1,381 @@
-# schedule-manager
-- 주제
+# Schedule Manager
 
-프로젝트명 : 학원/교육 운영 스케줄 관리 시스템  
-한 줄 설명 : 운영에 필요한 스케쥴 관리 시스템  
-누가 쓰는 서비스인지: 학원/교육 운영자  
-어떤 문제를 해결하는지: 기존 엑셀이나 카톡으로 일정을 관리했던 것을 시스템화해서 관리하고자 하였습니다.  
-왜 이 주제를 선택했는지 : 학원 웹사이트 회사 재직 당시에 만들었었는데 부족한 면이 있어서 Spring boot를 적용해 만들어 보고자 합니다.   
+학원/교육 운영 과정에서 발생하는 일정과 참여자를 관리하기 위한 협업 일정 관리 REST API 프로젝트입니다.
 
-- 기술 적용 계획
+기존에는 엑셀이나 카카오톡 등으로 일정을 관리하면서 일정 변경, 참여자 확인, 진행 상태를 한곳에서 관리하기 어려웠습니다.  
+과거 학원 웹사이트 개발 업무에서 비슷한 기능을 구현한 경험이 있었고, 당시 부족했던 부분을 보완하면서 Spring Boot와 JPA를 적용해 다시 만들어보고자 시작했습니다.
 
-| 기술 | 어디에 적용할지 |
+---
+
+## 1. 주요 기능
+
+- 회원가입 / 로그인 / 로그아웃
+- Redis Session 기반 인증
+- 일정 등록 / 조회 / 수정 / 삭제
+- 일정 상태 변경 및 변경 이력 관리
+- 일정 참여자 초대
+- 초대 목록 조회
+- 초대 수락 / 거절
+- 작성자와 참여자 관계에 따른 접근 권한 제어
+- Cursor 기반 일정 목록 조회
+- 공통 ErrorResponse 및 traceId 기반 오류 추적
+- Swagger / OpenAPI 문서화
+- GitHub Actions 기반 테스트 자동 실행
+
+---
+
+## 2. 기술 스택
+
+| 기술 | 적용 내용 |
 | :--- | :--- |
-| JPA | 엔티티 연관관계 매핑 및 Fetch Join을 통한 성능 최적화에 적용 |
-| Redis | Session 저장소 구축 및 다가오는 일정 데이터 캐싱에 적용 |
-| Spring Security | 로그인 인증 및 접근 권한 체크 기능에 적용 |
-| RESTful API | 일관된 상태 코드 반환, Location 헤더 활용, 공통 ErrorResponse 구조 설계에 적용 |
-| Test | Service, Controller, Repository 계층별 테스트 코드 작성에 적용 |
-| Flyway | DB 스키마 버전 관리 및 변경 이력 추적에 적용 |
-| Logging | 운영 로그에 traceId를 부여하여 에러 응답과 로그를 연직선상에서 연결하는 데 적용 |
+| Java 21 | 애플리케이션 개발 |
+| Spring Boot 4.0.6 | REST API 및 애플리케이션 구성 |
+| Spring Security | 로그인 인증 및 접근 권한 처리 |
+| Spring Data JPA | 엔티티 매핑 및 데이터 접근 |
+| MariaDB 11.4 | 관계형 데이터 저장 |
+| Redis 7.4 | HTTP Session 저장소 |
+| Spring Session | Redis 기반 세션 관리 |
+| Bean Validation | 요청 데이터 검증 |
+| Swagger / OpenAPI | API 문서화 |
+| JUnit / MockMvc | Service 및 API 통합 테스트 |
+| Docker | 애플리케이션 실행 환경 구성 |
+| GitHub Actions | Java 21 환경 테스트 자동화 |
 
-- 환경 변수 명시
 
- 실행 환경
- - Java 21
- - Spring Boot 4.0.6
- - MariaDB 11.4
- - Redis 7.4 
- 
- 환경 변수
- - DB_HOST / DB_PORT / DB_NAME / DB_USERNAME / DB_PASSWORD
- - REDIS_HOST / REDIS_PORT
-## 로컬 실행
+## 3. 실행 환경
 
-수업용 HTTP 요청은 `local` 프로필로 실행합니다.
+- Java 21
+- Spring Boot 4.0.6
+- MariaDB 11.4
+- Redis 7.4
+- Docker
+
+---
+
+## 4. 환경 변수
+
+| 환경 변수 | 설명 | 기본값 |
+| :--- | :--- | :--- |
+| DB_HOST | MariaDB 호스트 | localhost |
+| DB_PORT | MariaDB 포트 | 3306 |
+| DB_NAME | 데이터베이스 이름 | schedule_manager |
+| DB_USERNAME | DB 사용자 | root |
+| DB_PASSWORD | DB 비밀번호 | - |
+| REDIS_HOST | Redis 호스트 | localhost |
+| REDIS_PORT | Redis 포트 | 6379 |
+| PORT | 애플리케이션 포트 | 18080 |
+| CSRF_ENABLED | CSRF 활성화 여부 | true |
+| COOKIE_SECURE | Secure Cookie 활성화 여부 | true |
+
+DB 비밀번호와 환경별 접속 정보는 저장소에 포함하지 않고 환경 변수로 전달합니다.
+
+---
+
+## 5. 로컬 실행
+
+개발 환경에서는 `local` 프로필을 사용합니다.
 
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-```  
-기본 프로필은 CSRF 방어와 Secure 세션 쿠키를 활성화한 배포 안전 기본값입니다. Spring Security 7의 `csrf.spa()`가 `XSRF-TOKEN` 쿠키와 `X-XSRF-TOKEN` 헤더를 처리합니다. 로컬의 `http://localhost:18080`에서 `requests-week14.http`를 실행할 때만 `local` 프로필을 사용합니다. 기본 프로필을 실제 배포에 사용하려면 HTTPS뿐 아니라 프론트엔드가 쿠키의 토큰을 헤더로 다시 보내도록 연결해야 합니다.
+```
 
-권한 정책 + 상태 전이 규칙 작성
-권한 정책
-- 일반 사용자 / 관리자 / 차단 사용자
-- 작성자만 가능한 기능
-- 참여자도 가능한 기능
-- 관리자가 참여자를 지정하여 작성이 가능한 기능
+`local` 프로필에서는 로컬 HTTP 환경에서 API를 테스트할 수 있도록 다음 설정을 적용합니다.
 
-상태 전이 규칙
-- PLANNED -> IN_PROGRESS
-- PLANNED -> CANCELED
-- IN_PROGRESS -> DONE
-- IN_PROGRESS -> CANCELED
-- DONE/CANCELED 이후 변경 불가
+- CSRF 비활성화
+- Secure Cookie 비활성화
+- `ddl-auto: update`
+- SQL 출력
+- Spring Security / Hibernate SQL DEBUG 로그
 
-ERD 작성
-초기 구상  
-1. 담당자를 지정하고 그 담당자와 같이 하는 사람을 지정을해서 그 담당자가 최종으로 컨펌을 하는 구조입니다.
-2. 처음 구성은 일단 로그인합니다.
-3. 그리고서는 자신에게 할당된 업무를 확인하고
-4. 그 업무를 수행하며 컨펌 받습니다.
-<img width="1366" height="856" alt="Untitled" src="https://github.com/user-attachments/assets/188f24e2-98a5-4460-985a-a9cd4ab353ae" />
+기본 프로필은 CSRF와 Secure Session Cookie가 활성화되어 있습니다.
 
-각 테이블 역할
+---
 
-users — 로그인 사용자. role 은 USER/ADMIN, status 는 ACTIVE/BLOCKED. 차단된
-유저는 로그인이나 주요 요청을 막을 수 있어야 합니다.    
-schedules — 핵심 도메인. owner_id 는 작성자. version 은 JPA 낙관적 락에 사용.  
-schedule_participants — User와 Schedule의 다대다 관계를 풀어낸 중간 테이블.  
-@ManyToMany 를 바로 쓰기보다 중간 엔티티를 두면 나중에 joinedAt, 역할, 초대 상태 같은 컬럼
-을 추가 가능.  
-schedule_status_history — 상태 변경 이력.  
-confirm_requests  — 협업자가 업무 완료 후 담당자에게 승인을 요청하고 피드백을 받는 핵심 워크플로우 테이블입니다.   
-status를 통해 컨펌 진행 상황을 관리하며, feedback 컬럼을 두어 반려 사유나 수정 요청 사항을 텍스트로 보존합니다.   
-스케줄 자체의 상태와 분리되어 있어,
-한 업무 내에서 발생한 수정 및 재요청 이력을 추적할 수 있습니다.
+## 6. Docker 실행
 
+### 6.1 JAR 생성
 
-## 현재 구현 API (14주차)
+프로젝트 루트에서 실행합니다.
 
+```bash
+./mvnw package
+```
 
-| 메서드 | URL | 설명 | 요청 | 응답 | 인증 | 
-| :--- | :--- |:--- |:--- |:--- |:--- |
-| POST | /api/auth/signup | 회원가입 | {email,password,nickname} | 201 + UserResponse | X |
-| POST | /api/auth/login | 로그인 | {email,password} | 200 + UserResponse | X |
-| POST | /api/auth/logout | 로그아웃 | - | 204 | O |
-| GET | /api/users/me | 내 정보 조회 | - | 200 + UserResponse | O | 
-| POST | /api/schedules | 스케줄 등록 | {title,description,scheduledAt} | 201 + Location | O | 
-| GET | /api/schedules | 작성·참여 일정 검색 + Cursor 목록 | `status`, `fromAt`, `toAt`, `cursorScheduledAt`, `cursorId`, `size` | 200 + CursorResponse<ScheduleSummaryResponse> | O | 
-| GET | /api/schedules/{id} | 스케줄 단건 조회 | - | 200 + ScheduleResponse | O(작성자/참여자) |
-| PATCH | /api/schedules/{id} | 스케줄 부분 수정 | {title?,description?,scheduledAt?,version} | 200 + ScheduleResponse | O(작성자) | 
-| DELETE | /api/schedules/{id} | 예정 일정 삭제 | - | 204 | O(작성자) |
-| POST | /api/schedules/{id}/participants | 참여자 추가 | {userId} | 201 + Location | O(작성자) |
-| GET | /api/schedules/{id}/participants | 참여자 목록 조회 | - | 200 + List<ScheduleParticipantDetailResponse> | O(작성자/참여자) |
-| DELETE | /api/schedules/{id}/participants/{userId} | 참여자 제거 | - | 204 | O(작성자) |
-| PATCH | /api/schedules/{id}/status | 상태 변경 | {toStatus,version} | 200 + ScheduleResponse | O(작성자) |
-| GET | /api/schedules/{id}/history | 상태 변경 이력 | - | 200 + List<ScheduleStatusHistoryResponse> | O(작성자/참여자) |
+테스트가 모두 통과하면 `target/` 디렉터리에 실행 가능한 JAR가 생성됩니다.
 
-### 13주차 권한 및 생명주기 정책
+### 6.2 Docker 이미지 생성
 
-- 작성자만 참여자 추가·제거와 상태 변경을 할 수 있습니다.
-- 참여자는 배정된 일정과 상태 이력을 조회할 수 있습니다.
-- 참여자가 직접 `DONE`으로 바꾸는 대신, 향후 `confirm_requests`로 완료 요청을 보내고 작성자가 승인하도록 설계합니다.
-- `PLANNED` 일정만 삭제할 수 있습니다. 시작된 일정은 이력을 보존하기 위해 삭제하지 않고 `DONE` 또는 `CANCELED`로 종료합니다.
-- 상태 전이 규칙이나 요청 version이 현재 리소스와 충돌하면 `409 Conflict`를 반환합니다.
+```bash
+docker build -t schedule-manager .
+```
 
-### 공통 오류 응답
+Docker 이미지에는 DB 비밀번호 등의 환경별 비밀값을 포함하지 않습니다.
 
-입력 검증 실패는 공통 오류 코드와 함께 필드별 메시지를 반환합니다. 비밀번호 같은 민감값이 다시 노출되지 않도록 `rejectedValue`는 포함하지 않습니다.
+### 6.3 `.env` 작성
+
+프로젝트 루트에 `.env` 파일을 생성합니다.
+
+```env
+DB_HOST=host.docker.internal
+DB_PORT=3306
+DB_NAME=schedule_manager
+DB_USERNAME=root
+DB_PASSWORD=YOUR_PASSWORD
+
+REDIS_HOST=host.docker.internal
+REDIS_PORT=6379
+
+CSRF_ENABLED=false
+COOKIE_SECURE=false
+```
+
+`.env`는 `.gitignore`에 등록하여 Git 저장소에 커밋하지 않습니다.
+
+Mac/Windows Docker Desktop에서 호스트 머신에 실행 중인 MariaDB와 Redis에 접근하기 위해 `host.docker.internal`을 사용합니다.
+
+### 6.4 컨테이너 실행
+
+```bash
+docker run --env-file .env -p 18080:18080 schedule-manager
+```
+
+정상 실행되면 애플리케이션은 다음 주소에서 접근할 수 있습니다.
+
+```text
+http://localhost:18080
+```
+
+Swagger UI:
+
+```text
+http://localhost:18080/swagger-ui/index.html
+```
+
+### 6.5 Redis Session 확인
+
+Docker 환경에서 회원가입 및 로그인 후 Redis에 다음 형식의 Session Key가 생성되는 것을 확인했습니다.
+
+```text
+schedule-manager:session:sessions:{sessionId}
+```
+
+확인 예시:
+
+```text
+schedule-manager:session:sessions:e24180da-...
+```
+
+Docker 컨테이너에서 실행된 Spring Boot 애플리케이션이 호스트의 MariaDB와 Redis에 연결하고, 로그인 세션을 Redis에 저장하는 것까지 확인했습니다.
+
+---
+
+## 7. 인증 방식
+
+### Redis Session을 선택한 이유
+
+#### Context
+
+운영 관리형 서비스에서는 사용자 차단, 강제 로그아웃, 권한 변경 후 로그인 상태를 서버에서 통제할 필요가 있다고 판단했습니다.
+
+JWT도 고려했지만 Access Token 방식은 발급된 토큰을 만료 전에 즉시 무효화하려면 별도의 관리 방식이 필요합니다.
+
+#### Decision
+
+Redis Session 기반 인증을 사용합니다.
+
+```text
+Client
+   ↓
+Session Cookie
+   ↓
+Spring Security
+   ↓
+Spring Session
+   ↓
+Redis
+```
+
+#### Consequences
+
+- 서버에서 로그인 세션을 관리할 수 있습니다.
+- 애플리케이션 서버와 세션 저장소를 분리할 수 있습니다.
+- Redis 장애가 인증에 영향을 줄 수 있으므로 Redis 운영이 필요합니다.
+- 마이크로서비스 또는 외부 API 중심 구조에서는 다른 인증 방식이 더 적합할 수 있습니다.
+
+현재 사용자 차단 또는 권한 변경 시 해당 사용자의 기존 세션을 즉시 찾아 삭제하는 기능까지는 구현하지 않았습니다.
+
+Redis Session을 사용한다는 것만으로 강제 로그아웃이 자동으로 해결되는 것은 아니며, 사용자별 세션 조회 및 무효화 정책이 추가로 필요합니다.
+
+---
+
+## 8. 도메인 구조
+
+### users
+
+로그인 사용자 정보를 관리합니다.
+
+- `role`: USER / ADMIN
+- `status`: ACTIVE / BLOCKED
+
+차단된 사용자의 로그인이나 주요 요청을 제한할 수 있도록 구성합니다.
+
+### schedules
+
+일정의 핵심 정보를 관리합니다.
+
+- 작성자
+- 제목
+- 설명
+- 예정 시간
+- 일정 상태
+- version
+
+`version`은 JPA 낙관적 락을 이용한 동시 수정 충돌 감지에 사용합니다.
+
+### schedule_participants
+
+User와 Schedule의 다대다 관계를 중간 엔티티로 분리했습니다.
+
+`@ManyToMany`를 직접 사용하지 않고 별도의 엔티티를 두어 참여 상태와 같은 관계 자체의 정보를 관리할 수 있도록 했습니다.
+
+현재 참여 상태:
+
+```text
+PENDING
+ACCEPTED
+REJECTED
+```
+
+### schedule_status_history
+
+일정의 상태 변경 이력을 저장합니다.
+
+누가 어떤 상태로 변경했는지 기록하여 일정 변경 흐름을 확인할 수 있도록 구성했습니다.
+
+### confirm_requests
+
+향후 구현 예정입니다.
+
+참여자가 업무 완료 후 담당자에게 승인을 요청하고 피드백을 받을 수 있는 워크플로우를 구성할 예정입니다.
+
+일정 자체의 상태와 승인 요청 상태를 분리하여 수정 및 재요청 이력을 관리하는 구조를 계획하고 있습니다.
+
+---
+
+## 9. 일정 상태 전이
+
+현재 허용하는 상태 전이는 다음과 같습니다.
+
+```text
+PLANNED
+ ├─→ IN_PROGRESS
+ └─→ CANCELED
+
+IN_PROGRESS
+ ├─→ DONE
+ └─→ CANCELED
+
+DONE
+ └─→ 변경 불가
+
+CANCELED
+ └─→ 변경 불가
+```
+
+잘못된 상태 전이나 요청한 `version`이 현재 리소스와 충돌하면 `409 Conflict`를 반환합니다.
+
+---
+
+## 10. 권한 정책
+
+사용자와 일정의 관계를 다음과 같이 구분합니다.
+
+```text
+OWNER
+PENDING
+ACCEPTED
+REJECTED
+NONE
+```
+
+권한 판정은 `ScheduleRelationResolver`와 `ScheduleAccessPolicy`로 분리했습니다.
+
+### 일정 접근
+
+| 관계 | 일정 조회 | 상태 이력 조회 | 참여자 목록 |
+| :--- | :---: | :---: | :--- |
+| OWNER | O | O | 전체 |
+| ACCEPTED | O | O | ACCEPTED만 |
+| PENDING | X | X | X |
+| REJECTED | X | X | X |
+| NONE | X | X | X |
+
+일정 수정, 삭제, 상태 변경 및 참여자 관리는 작성자만 수행할 수 있습니다.
+
+---
+
+## 11. 초대 생명주기 정책
+
+일정 상태와 초대 처리가 서로 끊기지 않도록 초대 생성, 조회, 수락, 거절에 동일한 일정 생명주기 기준을 적용했습니다.
+
+| 일정 상태 | 신규 초대 | PENDING 초대 조회 | 수락 | 거절 |
+| :--- | :---: | :---: | :---: | :---: |
+| PLANNED | O | O | O | O |
+| IN_PROGRESS | O | O | O | O |
+| DONE | X | X | X | X |
+| CANCELED | X | X | X | X |
+
+`IN_PROGRESS` 상태에서도 새로운 참여자가 일정에 합류할 수 있도록 허용합니다.
+
+반면 이미 종료되거나 취소된 일정에는 새로운 참여자를 추가하지 않습니다.
+
+API 통합 테스트에서 다음 흐름을 검증했습니다.
+
+```text
+IN_PROGRESS
+    ↓
+신규 참여자 초대
+    ↓
+PENDING 생성
+    ↓
+초대 목록 조회
+    ↓
+수락 또는 거절
+```
+
+`DONE`, `CANCELED` 일정의 신규 초대 요청은 거부됩니다.
+
+---
+
+## 12. 현재 구현 API
+
+| 메서드 | URL | 설명 | 요청 | 응답 | 인증/권한 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| POST | `/api/auth/signup` | 회원가입 | `{email,password,nickname}` | `201 + UserResponse` | X |
+| POST | `/api/auth/login` | 로그인 | `{email,password}` | `200 + UserResponse` | X |
+| POST | `/api/auth/logout` | 로그아웃 | - | `204` | 로그인 |
+| GET | `/api/users/me` | 내 정보 조회 | - | `200 + UserResponse` | 로그인 |
+| POST | `/api/schedules` | 일정 등록 | `{title,description,scheduledAt}` | `201` | 로그인 |
+| GET | `/api/schedules` | 작성·참여 일정 Cursor 조회 | 검색 조건 | `200 + CursorResponse` | 로그인 |
+| GET | `/api/schedules/{id}` | 일정 단건 조회 | - | `200 + ScheduleResponse` | OWNER / ACCEPTED |
+| PATCH | `/api/schedules/{id}` | 일정 부분 수정 | `{title?,description?,scheduledAt?,version}` | `200 + ScheduleResponse` | OWNER |
+| DELETE | `/api/schedules/{id}` | 예정 일정 삭제 | - | `204` | OWNER |
+| PATCH | `/api/schedules/{id}/status` | 일정 상태 변경 | `{toStatus,version}` | `200 + ScheduleResponse` | OWNER |
+| GET | `/api/schedules/{id}/history` | 상태 변경 이력 | - | `200 + List` | OWNER / ACCEPTED |
+| POST | `/api/schedules/{id}/participants` | 참여자 초대 | `{userId}` | `201` | OWNER |
+| GET | `/api/schedules/{id}/participants` | 참여자 목록 | - | `200 + List` | OWNER / ACCEPTED |
+| DELETE | `/api/schedules/{id}/participants/{userId}` | 참여자 제거 | - | `204` | OWNER |
+| GET | `/api/schedules/invitations` | 내 PENDING 초대 목록 | - | `200 + List` | 로그인 |
+| PATCH | `/api/schedules/{id}/participants/me/accept` | 초대 수락 | - | `204` | 초대받은 사용자 |
+| PATCH | `/api/schedules/{id}/participants/me/reject` | 초대 거절 | - | `204` | 초대받은 사용자 |
+
+---
+
+## 13. 공통 오류 응답
+
+입력 검증 실패 시 공통 오류 코드와 필드별 메시지를 반환합니다.
+
+비밀번호 같은 민감값이 응답에 다시 노출되지 않도록 `rejectedValue`는 포함하지 않습니다.
 
 ```json
 {
@@ -123,133 +392,184 @@ status를 통해 컨펌 진행 상황을 관리하며, feedback 컬럼을 두어
 }
 ```
 
-Swagger/OpenAPI에는 실제 HTTP 계약과 동일하게 등록 `201`, 삭제·로그아웃 `204`, 검증 실패 `400`, 버전 충돌 `409`를 명시합니다.
+주요 HTTP 상태 코드는 다음 기준으로 사용합니다.
 
-## 향후 구현 계획 (15주차 이후)
+```text
+200 OK          → 조회/수정 성공
+201 Created     → 리소스 생성 성공
+204 No Content  → 처리 성공, 응답 Body 없음
+400 Bad Request → 입력값 오류
+401 Unauthorized→ 인증 필요
+403 Forbidden   → 접근 권한 없음
+404 Not Found   → 리소스 없음
+409 Conflict    → 상태 전이 또는 현재 리소스 상태와 충돌
+```
 
-아래 API는 설계안이며 현재 코드에는 아직 구현되지 않았습니다.
+ErrorResponse에는 `traceId`를 포함하여 클라이언트의 오류 응답과 서버 로그를 연결할 수 있도록 구성했습니다.
 
-| 메서드 | URL | 설명 | 요청 | 응답 | 인증 |
-| :--- | :--- |:--- |:--- |:--- |:--- |
-| GET | /api/schedules/upcoming | 다가오는 일정 캐시 조회 | ?size=10 | 200 + List<ScheduleSummary> | O |
-| POST | /api/confirm-requests | 컴펌(결재) 요청 등록 | {scheduleId, approverId} | 201 Created {id, scheduleId, requesterId, approverId, status: 'PENDING', createdAt} | O(협업자) |
-| PATCH | /api/confirm-requests/{id}/status | 컨펌 요청 승인/반려 처리  | {status, feedback?}※ status: APPROVED/REJECTED  | 200 OK {id, scheduleId, status, feedback, updatedAt} | O(담당자) |
-| GET | /api/confirm-requests | 결재 보관함 (내가 보낸/받은 요청) | ?type=RECEIVE 또는 SEND&status=&size=&cursorId=  | 200 OK CursorResponse<ConfirmRequestResponse>  | O |
+---
 
-인증 방식 ADR 작성
+## 14. 테스트 및 CI
 
-# 001. 인증 방식으로  Redis Session을 선택한 이유
+다음 영역을 테스트하고 있습니다.
 
-## Context
-- 운영 관리형 서비스라 사용자 차단, 강제 로그아웃, 권한 변경 반영 정책이 중요하다.
-- JWT도 고려했지만 access token은 만료 전까지 기본적으로 유효하다.
+- 회원가입 / 로그인
+- 입력값 검증
+- 일정 CRUD
+- 일정 상태 전이
+- 낙관적 락 충돌
+- 일정 접근 권한
+- 참여자 공개 범위
+- 초대 생성 / 조회 / 수락 / 거절
+- 일정 상태별 초대 생명주기
+- Cursor 페이징
+- Repository 조회
+- N+1 조회 문제
 
-## Decision
-- Redis Session 기반 인증을 사용한다.
+GitHub Actions에서는 Java 21 환경에서 Maven 테스트를 자동 실행합니다.
 
-## Consequences
-- 사용자별 세션 조회·삭제 정책을 구현하면 서버가 로그인 상태를 통제할 수 있다.
-- 세션 저장소인 Redis가 필요하다.
-- 마이크로서비스나 외부 API 구조에서는 JWT가 더 적합할 수 있다.
+현재 CI는 테스트 자동 실행까지 담당하며, 자동 배포 파이프라인은 아직 구성하지 않았습니다.
 
-> 현재 12주차 코드에는 사용자 차단·권한 변경 시 기존 세션을 즉시 찾아 삭제하는 기능까지는 구현하지 않았습니다. Redis Session 선택만으로 자동 해결되지 않으며, 이후 사용자별 세션 인덱스와 무효화 정책을 추가해야 합니다.
+---
 
+## 15. 트러블슈팅
 
-# 성능/테스트/운영 검증 계획 작성
+### 15.1 일정 목록의 안정적인 Cursor 페이징
 
-성능
-- EXPLAIN으로 일정 목록 쿼리 인덱스 확인
-- N+1 발생 여부 확인
-- 캐시 적용 전/후 응답 시간 비교
-- DB 스키마 변경은 Flyway migration으로 관리 예정
-  테스트
-- 상태 전이 성공/실패 테스트
-- 권한 없는 수정 실패 테스트
-- Repository 쿼리 테스트
-  운영
+#### 문제
 
-- ErrorResponse에 traceId 포함
-- Actuator health check
-- GitHub Actions로 테스트 자동화 예정
+`scheduledAt`만 Cursor로 사용하면 같은 시각의 일정이 여러 건 존재할 때 다음 페이지에서 데이터가 누락되거나 중복될 수 있었습니다.
 
-# 패키지 구조 초안
+#### 원인
 
-auth/  
-역할 : 회원가입, 로그인, 로그아웃 및 Session 검증을 담당합니다.
+`scheduledAt` 하나만으로는 전체 데이터의 정렬 순서가 결정되지 않았습니다.
 
-user/  
-역할 : 사용자 정보 조회 및 상태 관리를 담당합니다.
+#### 해결
 
-schedule/  
-역할 : 스케줄 및 협업의 도메인입니다.
+```text
+scheduledAt DESC
+id DESC
+```
 
-common/  
-역할 : 공통 유틸 및 예외 처리합니다.
+복합 정렬을 사용했습니다.
 
-config/  
-역할 : 애플리케이션 설정입니다.
+다음 페이지 조회 조건 역시 `scheduledAt + id`를 함께 사용하도록 맞췄습니다.
 
-# 회원가입 시 이메일 중복 검증을 DB 유니크 제약 + Service exists 체크 둘 다 걸어서 이중으로 방어하는 구조로 설계했습니다.
-1. 1단계 방어에서는 서비스 레이어가 검증을 합니다.  
-   DB에 불필요한 INSERT 요청을 보내기전에 빠르게 조회 쿼리만으로 중복을 반별하여 서버 자원을 아낄 수 있습니다.  
-   하지만 미세한 시간 차로 동시에 들어오는 요청의 경우, 두 요청 모두 아직 DB에 저장되기 전이므로 exists 검증을 동시에 통과하는 허점이 있습니다.
-2. 2단계 방어에서는 Database 레이어 검증을 합니다.    
-   DB 엔진 수준에서 동일한 이메일 저장을 물리적으로 차단하기 때문에, 동시 요청이 들어오더라도 데이터가 중복 저장 되는 것을 막아줍니다.  
+또한 요청한 `size`보다 한 건을 더 조회하여 별도의 COUNT 쿼리 없이 `hasNext`를 판단하도록 구성했습니다.
 
-## 트러블슈팅: 일정 목록의 안정적인 Cursor 페이징
-### 문제
-scheduledAt만 Cursor로 사용하면 같은 시각의 일정이 여러 건일 때
-다음 페이지에서 누락되거나 중복될 수 있었다.
-### 원인
-scheduledAt 하나만으로는 전체 정렬 순서가 결정되지 않았다.
-### 해결
-scheduledAt DESC, id DESC로 정렬하고,
-다음 페이지 조건도 scheduledAt + id 복합 조건으로 맞췄다.
-size + 1건을 조회해 별도 COUNT 없이 hasNext를 판단했다.
-### 검증
-같은 scheduledAt의 일정과 작성·참여 일정을 섞은 통합 테스트에서
-페이지 사이의 누락과 중복이 없음을 확인했다.
+#### 검증
 
+같은 `scheduledAt`을 가진 일정과 작성·참여 일정을 섞은 통합 테스트에서 페이지 사이에 누락과 중복이 없는지 확인했습니다.
 
-## 트러블슈팅: 참여자 목록 N+1
-### 문제
-참여자 3명의 nickname을 응답에 넣을 때 SQL이 4번 실행됐다.
-### 원인
-ScheduleParticipant.user가 LAZY이고 DTO 변환 중 User에 접근했다.
-### 해결
-해당 조회에 @EntityGraph(attributePaths = "user")를 적용했다.
-### 결과
-참여자 상세 조회 Repository 호출에서 N+1을 제거해 조회 쿼리를 4회에서 1회로 줄였다. 실제 Service 요청에서는 일정 및 접근 권한 확인 쿼리가 추가된다.
-### 선택 이유와 제한
+---
 
-현재 조회는 to-one User를 함께 가져오고 페이징하지 않아
-EntityGraph가 간결했다. 컬렉션 Fetch Join과 페이징은 무조건 결합하지 않는다.
-  
+### 15.2 참여자 목록 N+1
 
-# 프로젝트 소개 
-일정을 생생하고 여러 참여자를 초대하여 승인과 상태 변경을 관리하는 협업 일정 관리 앱입니다.
-Spring Boot 와 JPA를 기반으로 인증,권한관리,참여자 승인, 일정 이력 관리 기능을 구현했으며 REST API와 테스트 코드를 통해 안정성을 검증했습니다.
-### 기술 선택 이유
-Spring Boot + JPA
-반복적인 CRUD보다 비즈니스 로직 구현에 집중하기 위해 선택
-객체 중심으로 도메인을 설계하고 연관관계를 자연스럽게 표현 가능
-### 트러블 슈팅
-트러블슈팅(N+1)
-## 트러블슈팅: 참여자 목록 N+1
-### 문제
-참여자 3명의 nickname을 응답에 넣을 때 SQL이 4번 실행됐다.
-### 원인
-ScheduleParticipant.user가 LAZY이고 DTO 변환 중 User에 접근했다.
-### 해결
-해당 조회에 @EntityGraph(attributePaths = "user")를 적용했다.
-### 결과
-참여자 상세 조회 Repository 호출에서 N+1을 제거해 조회 쿼리를 4회에서 1회로 줄였다. 실제 Service 요청에서는 일정 및 접근 권한 확인 쿼리가 추가된다.
-### 선택 이유와 제한
+#### 문제
 
-현재 조회는 to-one User를 함께 가져오고 페이징하지 않아
-EntityGraph가 간결했다. 컬렉션 Fetch Join과 페이징은 무조건 결합하지 않는다.
+참여자 3명의 nickname을 응답 DTO에 포함하는 과정에서 SQL이 4번 실행됐습니다.
 
-# 이력서 한 줄 소개
-JWT 기반 인증과 참여자 승인, 일정 이력 관리 기능을 구현한 협업 일정 관리 REST API 프로젝트
+#### 원인
 
+`ScheduleParticipant.user`가 LAZY 관계이고 DTO 변환 과정에서 User에 접근하면서 참여자마다 추가 조회가 발생했습니다.
 
+#### 해결
+
+해당 Repository 조회에 다음 설정을 적용했습니다.
+
+```java
+@EntityGraph(attributePaths = "user")
+```
+
+#### 결과
+
+참여자 상세 조회 Repository 호출에서 조회 쿼리를 4회에서 1회로 줄였습니다.
+
+실제 Service 요청에서는 일정 조회 및 접근 권한 확인을 위한 쿼리가 추가로 발생합니다.
+
+#### 선택 이유
+
+현재 조회는 to-one 관계인 User를 함께 조회하며 페이징을 사용하지 않기 때문에 `EntityGraph`를 적용했습니다.
+
+---
+
+## 16. 향후 구현 계획
+
+### Redis Cache
+
+다가오는 일정 조회에 Redis Cache를 적용하고 적용 전후 응답 시간을 비교할 예정입니다.
+
+```text
+GET /api/schedules/upcoming
+```
+
+### Confirm Request
+
+참여자가 직접 일정을 `DONE`으로 변경하는 대신 담당자에게 완료 승인을 요청하는 흐름을 추가할 예정입니다.
+
+| 메서드 | URL | 설명 |
+| :--- | :--- | :--- |
+| POST | `/api/confirm-requests` | 완료 승인 요청 |
+| PATCH | `/api/confirm-requests/{id}/status` | 승인 / 반려 |
+| GET | `/api/confirm-requests` | 보낸/받은 요청 조회 |
+
+### 운영 환경
+
+- 운영/개발 설정 추가 분리
+- HTTPS 환경에서 CSRF Cookie/Header 검증
+- 애플리케이션과 MariaDB/Redis를 함께 실행할 수 있는 Compose 환경 검토
+
+---
+
+## 17. 패키지 구조
+
+```text
+auth/
+└─ 회원가입, 로그인, 로그아웃 및 Session 인증
+
+user/
+└─ 사용자 정보 조회 및 상태 관리
+
+schedule/
+└─ 일정, 참여자, 초대, 상태 이력 및 권한 정책
+
+common/
+└─ 공통 예외 처리 및 유틸리티
+
+config/
+└─ Security 등 애플리케이션 설정
+```
+
+---
+
+## 18. 이메일 중복 방어
+
+회원가입 시 이메일 중복을 Service와 Database 두 단계에서 확인합니다.
+
+### 1단계 - Service
+
+회원가입 전에 `exists` 조회로 이메일 중복 여부를 확인합니다.
+
+이미 존재하는 이메일이라면 INSERT 요청 전에 차단할 수 있습니다.
+
+다만 거의 동시에 동일한 이메일로 두 요청이 들어오면 두 요청 모두 `exists` 검사를 통과할 가능성이 있습니다.
+
+### 2단계 - Database
+
+DB Unique Constraint를 적용하여 동일한 이메일이 실제로 중복 저장되는 것을 막습니다.
+
+따라서 Service 검사는 빠른 사용자 피드백을 담당하고, DB Unique Constraint가 최종 데이터 무결성을 보장합니다.
+
+---
+
+## 19. ERD
+
+초기 설계에서는 일정 작성자가 참여자를 지정하고, 참여자가 업무를 수행한 뒤 작성자가 최종 상태를 관리하는 구조를 기준으로 설계했습니다.
+
+![ERD](https://github.com/user-attachments/assets/188f24e2-98a5-4460-985a-a9cd4ab353ae)
+
+---
+
+## 이력서 한 줄 소개
+
+Redis Session 기반 인증과 관계별 접근 제어, 참여자 초대·승인, 일정 상태 이력을 구현하고 통합 테스트와 Docker 실행 환경까지 구성한 협업 일정 관리 REST API 프로젝트
