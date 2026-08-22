@@ -34,6 +34,8 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "현재 참여 상태에서는 요청을 처리할 수 없습니다."
     ),
+    INVITATION_CLOSED("E_409_009", HttpStatus.CONFLICT, "종료되거나 취소된 일정의 초대는 처리할 수 없습니다."
+    ),
     SAME_STATUS_TRANSITION(
             "E_409_005", HttpStatus.CONFLICT, "이미 요청한 상태입니다."),
     PARTICIPANT_ALREADY_EXISTS(

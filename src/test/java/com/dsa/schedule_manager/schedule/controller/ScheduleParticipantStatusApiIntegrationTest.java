@@ -1,5 +1,7 @@
 package com.dsa.schedule_manager.schedule.controller;
 
+import com.dsa.schedule_manager.schedule.domain.ParticipantStatus;
+import com.dsa.schedule_manager.schedule.domain.ScheduleParticipant;
 import com.dsa.schedule_manager.schedule.repository.ScheduleParticipantRepository;
 import com.dsa.schedule_manager.schedule.repository.ScheduleRepository;
 import com.dsa.schedule_manager.schedule.repository.ScheduleStatusHistoryRepository;
@@ -16,7 +18,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -40,6 +45,8 @@ class ScheduleParticipantStatusApiIntegrationTest {
 
     @Autowired
     UserRepository userRepository;
+    @Autowired
+    private ScheduleParticipantRepository scheduleParticipantRepository;
 
     @BeforeEach
     void setUp() {
@@ -279,10 +286,10 @@ class ScheduleParticipantStatusApiIntegrationTest {
                                 ownerSession.getAttribute("SPRING_SECURITY_CONTEXT")))
                 .andExpect(status().isNoContent());
 
-        org.assertj.core.api.Assertions.assertThat(
+        assertThat(
                 participantRepository.existsByScheduleIdAndUserId(scheduleId, participantId))
                 .isFalse();
-        org.assertj.core.api.Assertions.assertThat(scheduleRepository.findById(scheduleId))
+        assertThat(scheduleRepository.findById(scheduleId))
                 .isEmpty();
     }
 
@@ -863,6 +870,20 @@ class ScheduleParticipantStatusApiIntegrationTest {
                                 "SPRING_SECURITY_CONTEXT",
                                 participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
                 .andExpect(status().isNoContent());
+        // 1. 실제 상태가 ACCEPTED로 저장됐는지 확인
+        ScheduleParticipant participant = scheduleParticipantRepository.findByScheduleIdAndUserId(scheduleId, participantId)
+                .orElseThrow();
+        assertThat(participant.getStatus())
+                .isEqualTo(ParticipantStatus.ACCEPTED);
+
+        // 2. 처리된 초대가 PENDING 초대 목록에서 빠졌는지 확인
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].scheduleId")
+                        .value(not(hasItem((int) scheduleId))));
     }
 
     @Test
@@ -923,7 +944,7 @@ class ScheduleParticipantStatusApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
 
-        // 6. PENDING 참여자가 거절 시도 → 불가
+        // 6. PENDING 참여자가 초대를 거절
         mockMvc.perform(patch(
                         "/api/schedules/{scheduleId}/participants/me/reject",
                         scheduleId)
@@ -932,6 +953,24 @@ class ScheduleParticipantStatusApiIntegrationTest {
                                 participantSession.getAttribute(
                                         "SPRING_SECURITY_CONTEXT")))
                 .andExpect(status().isNoContent());
+
+        // 1. 실제 상태가 REJECTED로 저장됐는지 확인
+        ScheduleParticipant participant =
+                scheduleParticipantRepository
+                        .findByScheduleIdAndUserId(scheduleId, participantId)
+                        .orElseThrow();
+
+        assertThat(participant.getStatus())
+                .isEqualTo(ParticipantStatus.REJECTED);
+
+        // 2. PENDING 초대 목록에서 제외됐는지 확인
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].scheduleId")
+                        .value(not(hasItem((int) scheduleId))));
     }
 
     @Test
@@ -1162,7 +1201,8 @@ class ScheduleParticipantStatusApiIntegrationTest {
                         .content("""
                         {"userId":%d}
                         """.formatted(participantId)))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("E_409_009"));
     }
 
     @Test
@@ -1219,7 +1259,216 @@ class ScheduleParticipantStatusApiIntegrationTest {
                         .content("""
                         {"userId":%d}
                         """.formatted(participantId)))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("E_409_009"));
+    }
+    @Test
+    void DONE_일정의_기존_PENDING_초대는_더_이상_처리할_수_없다() throws Exception {
+
+        signup("done-pending-owner@example.com", "done-pending-owner");
+        long participantId =
+                signup("done-pending-participant@example.com", "done-pending-participant");
+
+        HttpSession ownerSession =
+                login("done-pending-owner@example.com");
+
+        HttpSession participantSession =
+                login("done-pending-participant@example.com");
+
+        // 1. 일정 생성
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "title": "DONE 기존 초대 테스트",
+                      "scheduledAt": "2099-08-29T10:00:00"
+                    }
+                    """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long scheduleId = number(created, "$.id");
+
+        // 2. PENDING 초대 생성
+        addParticipant(ownerSession, scheduleId, participantId);
+
+        // 실제 PENDING 확인
+        ScheduleParticipant participant =
+                scheduleParticipantRepository
+                        .findByScheduleIdAndUserId(scheduleId, participantId)
+                        .orElseThrow();
+
+        assertThat(participant.getStatus())
+                .isEqualTo(ParticipantStatus.PENDING);
+
+        // 3. PLANNED -> IN_PROGRESS
+        mockMvc.perform(patch("/api/schedules/{id}/status", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "toStatus": "IN_PROGRESS",
+                      "version": 0
+                    }
+                    """))
+                .andExpect(status().isOk());
+
+        // 4. IN_PROGRESS -> DONE
+        mockMvc.perform(patch("/api/schedules/{id}/status", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "toStatus": "DONE",
+                      "version": 1
+                    }
+                    """))
+                .andExpect(status().isOk());
+
+        // 5. DONE 일정의 초대는 목록에서 제외
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].scheduleId")
+                        .value(not(hasItem((int) scheduleId))));
+
+        // 6. 수락 불가
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/accept",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("E_409_009"));
+
+        // 7. 거절 불가
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/reject",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("E_409_009"));
+
+        // 8. DB에는 PENDING으로 그대로 보존
+        ScheduleParticipant savedParticipant =
+                scheduleParticipantRepository
+                        .findByScheduleIdAndUserId(scheduleId, participantId)
+                        .orElseThrow();
+
+        assertThat(savedParticipant.getStatus())
+                .isEqualTo(ParticipantStatus.PENDING);
+    }
+
+    @Test
+    void CANCELED_일정의_기존_PENDING_초대는_더_이상_처리할_수_없다() throws Exception {
+
+        signup("canceled-pending-owner@example.com", "canceled-pending-owner");
+
+        long participantId =
+                signup(
+                        "canceled-pending-participant@example.com",
+                        "canceled-pending-participant"
+                );
+
+        HttpSession ownerSession =
+                login("canceled-pending-owner@example.com");
+
+        HttpSession participantSession =
+                login("canceled-pending-participant@example.com");
+
+        // 1. 일정 생성
+        MvcResult created = mockMvc.perform(post("/api/schedules")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "title": "CANCELED 기존 초대 테스트",
+                      "scheduledAt": "2099-08-30T10:00:00"
+                    }
+                    """))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        long scheduleId = number(created, "$.id");
+
+        // 2. PENDING 초대 생성
+        addParticipant(ownerSession, scheduleId, participantId);
+
+        // 실제 PENDING 상태인지 확인
+        ScheduleParticipant participant =
+                scheduleParticipantRepository
+                        .findByScheduleIdAndUserId(scheduleId, participantId)
+                        .orElseThrow();
+
+        assertThat(participant.getStatus())
+                .isEqualTo(ParticipantStatus.PENDING);
+
+        // 3. PLANNED -> CANCELED
+        mockMvc.perform(patch("/api/schedules/{id}/status", scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                ownerSession.getAttribute("SPRING_SECURITY_CONTEXT"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                    {
+                      "toStatus": "CANCELED",
+                      "version": 0
+                    }
+                    """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"));
+
+        // 4. CANCELED 일정의 PENDING 초대는 목록에서 제외
+        mockMvc.perform(get("/api/schedules/invitations")
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].scheduleId")
+                        .value(not(hasItem((int) scheduleId))));
+
+        // 5. 수락 불가
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/accept",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("E_409_009"));
+
+        // 6. 거절 불가
+        mockMvc.perform(patch(
+                        "/api/schedules/{scheduleId}/participants/me/reject",
+                        scheduleId)
+                        .sessionAttr(
+                                "SPRING_SECURITY_CONTEXT",
+                                participantSession.getAttribute("SPRING_SECURITY_CONTEXT")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("E_409_009"));
+
+        // 7. 처리할 수 없게 되었어도 DB에는 PENDING으로 보존
+        ScheduleParticipant savedParticipant =
+                scheduleParticipantRepository
+                        .findByScheduleIdAndUserId(scheduleId, participantId)
+                        .orElseThrow();
+
+        assertThat(savedParticipant.getStatus())
+                .isEqualTo(ParticipantStatus.PENDING);
     }
 
 

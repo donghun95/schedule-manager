@@ -28,7 +28,7 @@ public class ScheduleInvitationController {
 
     @Operation(
             summary = "내 초대 목록 조회",
-            description = "로그인한 사용자에게 온 PLANNED 일정의 PENDING 초대 목록을 조회합니다."
+            description = "로그인한 사용자에게 온 PLANNED 또는 IN_PROGRESS 일정의 PENDING 초대를 조회합니다."
     )
     @ApiResponses({
             @ApiResponse(

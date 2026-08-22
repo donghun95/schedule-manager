@@ -42,7 +42,7 @@ public class ScheduleParticipantService {
         // 우선적으로 계획단계인지 진행단계인지를 체크
         if (!isInvitationAllowedStatus(schedule.getStatus())) {
             throw new BusinessException(
-                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
+                    ErrorCode.INVITATION_CLOSED
             );
         }
 
@@ -148,7 +148,7 @@ public class ScheduleParticipantService {
                 participant.getSchedule().getStatus())) {
 
             throw new BusinessException(
-                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
+                    ErrorCode.INVITATION_CLOSED
             );
         }
 
@@ -174,13 +174,13 @@ public class ScheduleParticipantService {
                 participant.getSchedule().getStatus())) {
 
             throw new BusinessException(
-                    ErrorCode.INVALID_PARTICIPANT_STATUS_TRANSITION
+                    ErrorCode.INVITATION_CLOSED
             );
         }
 
         participant.reject();
     }
-    // 중복되는 상태 판단 하나로 만들기
+    // 초대 생성/수락/거절이 가능한 일정 상태
     private boolean isInvitationAllowedStatus(ScheduleStatus status) {
         return status == ScheduleStatus.PLANNED
                 || status == ScheduleStatus.IN_PROGRESS;

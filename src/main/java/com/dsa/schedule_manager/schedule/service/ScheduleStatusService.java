@@ -79,11 +79,4 @@ public class ScheduleStatusService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
     }
-
-    private void requireAccessible(Schedule schedule, Long userId) {
-        if (!schedule.isOwnedBy(userId)
-                && !participantRepository.existsByScheduleIdAndUserId(schedule.getId(), userId)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN);
-        }
-    }
 }

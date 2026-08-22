@@ -1,18 +1,12 @@
 package com.dsa.schedule_manager.schedule.authorization;
 
-import com.dsa.schedule_manager.schedule.repository.ScheduleParticipantRepository;
 import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 class ScheduleAccessPolicyTest {
 
-    private final ScheduleParticipantRepository participantRepository =
-            mock(ScheduleParticipantRepository.class);
-
     private final ScheduleAccessPolicy policy =
-            new ScheduleAccessPolicy(participantRepository);
+            new ScheduleAccessPolicy();
 
     @Test
     void owner는_일정_단건과_이력을_조회할_수_있다() {
@@ -102,40 +96,5 @@ class ScheduleAccessPolicyTest {
 
         assertThat(result)
                 .isEqualTo(ParticipantVisibility.NONE);
-    }
-
-    @Test
-    void owner는_일정을_관리할_수_있다() {
-        boolean result = policy.canManageSchedule(ScheduleRelation.OWNER);
-
-        assertThat(result).isTrue();
-    }
-
-    @Test
-    void pending_참여자는_일정을_관리할_수_없다() {
-        boolean result = policy.canManageSchedule(ScheduleRelation.PENDING);
-
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void accepted_참여자는_일정을_관리할_수_없다() {
-        boolean result = policy.canManageSchedule(ScheduleRelation.ACCEPTED);
-
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void rejected_참여자는_일정을_관리할_수_없다() {
-        boolean result = policy.canManageSchedule(ScheduleRelation.REJECTED);
-
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void 관계없는_사용자는_일정을_관리할_수_없다() {
-        boolean result = policy.canManageSchedule(ScheduleRelation.NONE);
-
-        assertThat(result).isFalse();
     }
 }

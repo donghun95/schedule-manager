@@ -129,14 +129,22 @@ CSRF_ENABLED=false
 COOKIE_SECURE=false
 ```
 
-`.env`는 `.gitignore`에 등록하여 Git 저장소에 커밋하지 않습니다.
+`.env`는 `.gitignore`와 `.dockerignore`에 등록하여 Git 저장소와 Docker 빌드 컨텍스트에서 제외합니다.
 
 Mac/Windows Docker Desktop에서 호스트 머신에 실행 중인 MariaDB와 Redis에 접근하기 위해 `host.docker.internal`을 사용합니다.
 
 ### 6.4 컨테이너 실행
 
+로컬 Docker 실행에서는 `local` 프로필을 사용합니다.
+
+`local` 프로필에서는 `ddl-auto: update`가 적용되어 빈 MariaDB에서도 개발용 테이블이 생성됩니다.
+
 ```bash
-docker run --env-file .env -p 18080:18080 schedule-manager
+docker run \
+  --env-file .env \
+  -e SPRING_PROFILES_ACTIVE=local \
+  -p 18080:18080 \
+  schedule-manager
 ```
 
 정상 실행되면 애플리케이션은 다음 주소에서 접근할 수 있습니다.
@@ -329,21 +337,9 @@ NONE
 
 반면 이미 종료되거나 취소된 일정에는 새로운 참여자를 추가하지 않습니다.
 
-API 통합 테스트에서 다음 흐름을 검증했습니다.
+API 통합 테스트에서 `IN_PROGRESS` 일정의 신규 초대 생성, PENDING 초대 목록 조회, 초대 수락 및 거절 동작을 각각 확인했습니다.
 
-```text
-IN_PROGRESS
-    ↓
-신규 참여자 초대
-    ↓
-PENDING 생성
-    ↓
-초대 목록 조회
-    ↓
-수락 또는 거절
-```
-
-`DONE`, `CANCELED` 일정의 신규 초대 요청은 거부됩니다.
+`DONE`, `CANCELED` 일정에서는 신규 초대 생성과 기존 PENDING 초대의 조회, 수락, 거절이 제한되는 것을 확인했습니다.
 
 ---
 
@@ -426,9 +422,23 @@ ErrorResponse에는 `traceId`를 포함하여 클라이언트의 오류 응답�
 - Repository 조회
 - N+1 조회 문제
 
-GitHub Actions에서는 Java 21 환경에서 Maven 테스트를 자동 실행합니다.
+GGitHub Actions에서는 Java 21 환경에서 `./mvnw test`를 실행합니다.
 
-현재 CI는 테스트 자동 실행까지 담당하며, 자동 배포 파이프라인은 아직 구성하지 않았습니다.
+현재 CI가 자동으로 확인하는 범위는 테스트 통과 여부까지입니다.
+
+다음 항목은 로컬 환경에서 직접 확인했습니다.
+
+- `./mvnw package` 실행 및 실행 JAR 생성
+- Docker 이미지 빌드
+- Docker 컨테이너 실행
+- MariaDB 연결
+- Redis Session 생성
+
+현재 CI에는 JAR 패키징과 Docker 이미지 빌드 단계가 포함되어 있지 않습니다.
+
+또한 `main` 브랜치에 필수 상태 검사를 설정하지 않아, 현재 테스트 실패가 병합이나 직접 push를 자동으로 차단하지는 않습니다.
+
+자동 배포 파이프라인은 아직 구성하지 않았습니다.
 
 ---
 
